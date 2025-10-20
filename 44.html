@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Avoid the Obstacles - VR Game</title>
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+</head>
+<body>
+    <a-scene background="color: #87CEEB" vr-mode-ui="enabled: false">
+        <!-- Assets -->
+        <a-assets>
+            <a-mixin id="obstacle" 
+                     geometry="primitive: box; width: 2; height: 2; depth: 1" 
+                     material="color: red"
+                     animation="property: position; to: 0 0 10; dur: 3000; loop: true">
+            </a-mixin>
+        </a-assets>
+
+        <!-- Player Camera -->
+        <a-camera id="player" 
+                  position="0 1.6 0" 
+                  wasd-controls="enabled: false"
+                  look-controls="enabled: true">
+            <!-- Crosshair for clicking -->
+            <a-cursor geometry="primitive: ring; radiusInner: 0.02; radiusOuter: 0.03"
+                      material="color: white; shader: flat"
+                      position="0 0 -1">
+            </a-cursor>
+        </a-camera>
+
+        <!-- Ground -->
+        <a-plane position="0 0 0" 
+                 rotation="-90 0 0" 
+                 width="10" 
+                 height="100" 
+                 color="#4CC3D9">
+        </a-plane>
+
+        <!-- Obstacles (will be created by JavaScript) -->
+        <a-entity id="obstacle-container"></a-entity>
+
+        <!-- UI Elements -->
+        <a-text id="score-text" 
+                position="-3 3 -5" 
+                value="Score: 0" 
+                color="white" 
+                scale="2 2 2">
+        </a-text>
+
+        <a-text id="instructions" 
+                position="0 2 -5" 
+                value="Click to Jump/Duck!\nAvoid the red obstacles!" 
+                color="yellow" 
+                scale="1.5 1.5 1.5" 
+                align="center">
+        </a-text>
+
+        <!-- Game Over Screen (hidden initially) -->
+        <a-text id="game-over" 
+                position="0 0 -5" 
+                value="GAME OVER!\nClick to Restart" 
+                color="red" 
+                scale="3 3 3" 
+                align="center" 
+                visible="false">
+        </a-text>
+    </a-scene>
+
+    <script>
+        // Game variables
+        let gameRunning = true;
+        let score = 0;
+        let playerY = 1.6; // Normal height
+        let isJumping = false;
+        let obstacles = [];
+        let obstacleSpeed = 0.05;
+        let spawnRate = 0.02;
+
+        // Get game elements
+        const player = document.querySelector('#player');
+        const obstacleContainer = document.querySelector('#obstacle-container');
+        const scoreText = document.querySelector('#score-text');
+        const gameOverText = document.querySelector('#game-over');
+        const instructions = document.querySelector('#instructions');
+
+        // Player movement - automatic forward motion
+        function movePlayer() {
+            if (!gameRunning) return;
+            
+            const currentPos = player.getAttribute('position');
+            player.setAttribute('position', {
+                x: currentPos.x,
+                y: playerY,
+                z: currentPos.z - 0.1 // Move forward automatically
+            });
+        }
+
+        // Jump/Duck mechanics
+        function handleClick() {
+            if (!gameRunning) {
+                // Restart game
+                restartGame();
+                return;
+            }
+
+            if (!isJumping) {
+                isJumping = true;
+                
+                // Alternate between jump (up) and duck (down)
+                if (playerY === 1.6) {
+                    // Jump
+                    playerY = 3.0;
+                    setTimeout(() => {
+                        playerY = 1.6;
+                        isJumping = false;
+                    }, 500);
+                }
+            }
+        }
+
+        // Create obstacles
+        function createObstacle() {
+            const obstacle = document.createElement('a-box');
+            const randomX = (Math.random() - 0.5) * 6; // Random X position
+            const randomY = Math.random() > 0.5 ? 1 : 2.5; // Low or high obstacle
+            
+            obstacle.setAttribute('position', `${randomX} ${randomY} -20`);
+            obstacle.setAttribute('width', '2');
+            obstacle.setAttribute('height', '2');
+            obstacle.setAttribute('depth', '1');
+            obstacle.setAttribute('color', 'red');
+            obstacle.setAttribute('class', 'obstacle');
+            
+            obstacleContainer.appendChild(obstacle);
+            obstacles.push({
+                element: obstacle,
+                x: randomX,
+                y: randomY,
+                z: -20
+            });
+        }
+
+        // Move obstacles toward player
+        function moveObstacles() {
+            if (!gameRunning) return;
+            
+            obstacles.forEach((obstacle, index) => {
+                obstacle.z += obstacleSpeed;
+                obstacle.element.setAttribute('position', 
+                    `${obstacle.x} ${obstacle.y} ${obstacle.z}`);
+                
+                // Remove obstacles that have passed the player
+                if (obstacle.z > 5) {
+                    obstacle.element.remove();
+                    obstacles.splice(index, 1);
+                    score += 10;
+                    scoreText.setAttribute('value', `Score: ${score}`);
+                    
+                    // Increase difficulty
+                    if (score % 100 === 0) {
+                        obstacleSpeed += 0.01;
+                        spawnRate += 0.005;
+                    }
+                }
+            });
+        }
+
+        // Collision detection
+        function checkCollisions() {
+            if (!gameRunning) return;
+            
+            const playerPos = player.getAttribute('position');
+            
+            obstacles.forEach(obstacle => {
+                const distance = Math.sqrt(
+                    Math.pow(playerPos.x - obstacle.x, 2) +
+                    Math.pow(playerPos.y - obstacle.y, 2) +
+                    Math.pow(playerPos.z - obstacle.z, 2)
+                );
+                
+                // Collision detected
+                if (distance < 1.5) {
+                    gameOver();
+                }
+            });
+        }
+
+        // Game over
+        function gameOver() {
+            gameRunning = false;
+            gameOverText.setAttribute('visible', 'true');
+            instructions.setAttribute('visible', 'false');
+        }
+
+        // Restart game
+        function restartGame() {
+            gameRunning = true;
+            score = 0;
+            playerY = 1.6;
+            isJumping = false;
+            obstacleSpeed = 0.05;
+            spawnRate = 0.02;
+            
+            // Reset UI
+            scoreText.setAttribute('value', 'Score: 0');
+            gameOverText.setAttribute('visible', 'false');
+            instructions.setAttribute('visible', 'true');
+            
+            // Clear obstacles
+            obstacles.forEach(obstacle => obstacle.element.remove());
+            obstacles = [];
+            
+            // Reset player position
+            player.setAttribute('position', '0 1.6 0');
+        }
+
+        // Game loop
+        function gameLoop() {
+            if (gameRunning) {
+                movePlayer();
+                moveObstacles();
+                checkCollisions();
+                
+                // Spawn new obstacles
+                if (Math.random() < spawnRate) {
+                    createObstacle();
+                }
+            }
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Event listeners
+        document.addEventListener('click', handleClick);
+        document.addEventListener('keydown', (event) => {
+            if (event.code === 'Space') {
+                event.preventDefault();
+                handleClick();
+            }
+        });
+
+        // Start the game
+        setTimeout(() => {
+            gameLoop();
+        }, 1000);
+    </script>
+</body>
+</html>
