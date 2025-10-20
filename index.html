@@ -416,6 +416,67 @@
             gameOverScreen.setAttribute('visible', 'true');
         }
 
-        // Restart game
-        function restartGame
+        // Restart game - COMPLETE FUNCTION
+        function restartGame() {
+            gameRunning = true;
+            score = 0;
+            distance = 0;
+            obstaclesAvoided = 0;
+            playerY = 1.6;
+            isJumping = false;
+            obstacleSpeed = 0.05;
+            spawnRate = 0.02;
+            speedMultiplier = 1;
+            maxSpeed = 1;
+            
+            // Reset UI
+            scoreText.setAttribute('value', 'Score: 0');
+            distanceText.setAttribute('value', 'Distance: 0m');
+            speedText.setAttribute('value', 'Speed: 1x');
+            obstaclesAvoidedText.setAttribute('value', 'Obstacles Avoided: 0');
+            gameOverScreen.setAttribute('visible', 'false');
+            instructions.setAttribute('visible', 'true');
+            scorePopup.setAttribute('visible', 'false');
+            
+            // Clear all obstacles
+            obstacles.forEach(obstacle => obstacle.element.remove());
+            obstacles = [];
+            
+            // Reset player position
+            player.setAttribute('position', '0 1.6 0');
+        }
+
+        // Game loop
+        function gameLoop() {
+            if (gameRunning) {
+                movePlayer();
+                moveObstacles();
+                checkCollisions();
+                
+                // Spawn new obstacles randomly across the plane
+                if (Math.random() < spawnRate) {
+                    createObstacle();
+                }
+            }
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Event listeners
+        document.addEventListener('click', handleClick);
+        document.addEventListener('keydown', (event) => {
+            if (event.code === 'Space') {
+                event.preventDefault();
+                handleClick();
+            }
+        });
+
+        // Start the game after a short delay
+        setTimeout(() => {
+            gameLoop();
+        }, 1000);
+    </script>
+</body>
+</html>
+
 
