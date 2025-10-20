@@ -27,23 +27,66 @@
             </a-cursor>
         </a-camera>
 
-        <!-- Ground -->
+        <!-- Much Longer Ground Plane -->
         <a-plane position="0 0 0" 
                  rotation="-90 0 0" 
-                 width="10" 
-                 height="100" 
-                 color="#4CC3D9">
+                 width="15" 
+                 height="500" 
+                 color="#4CC3D9"
+                 material="side: double">
+        </a-plane>
+
+        <!-- Side Walls for Visual Boundaries -->
+        <a-plane position="-7.5 2 0" 
+                 rotation="0 0 0" 
+                 width="500" 
+                 height="4" 
+                 color="#2E8B57"
+                 material="side: double">
+        </a-plane>
+        
+        <a-plane position="7.5 2 0" 
+                 rotation="0 0 0" 
+                 width="500" 
+                 height="4" 
+                 color="#2E8B57"
+                 material="side: double">
         </a-plane>
 
         <!-- Obstacles (will be created by JavaScript) -->
         <a-entity id="obstacle-container"></a-entity>
 
-        <!-- UI Elements -->
+        <!-- Enhanced UI Elements -->
         <a-text id="score-text" 
-                position="-3 3 -5" 
+                position="-4 3.5 -5" 
                 value="Score: 0" 
                 color="white" 
-                scale="2 2 2">
+                scale="2 2 2"
+                font="dejavu">
+        </a-text>
+
+        <a-text id="high-score-text" 
+                position="-4 3 -5" 
+                value="High Score: 0" 
+                color="yellow" 
+                scale="1.5 1.5 1.5"
+                font="dejavu">
+        </a-text>
+
+        <a-text id="distance-text" 
+                position="2 3.5 -5" 
+                value="Distance: 0m" 
+                color="cyan" 
+                scale="2 2 2"
+                font="dejavu">
+        </a-text>
+
+        <a-text id="speed-text" 
+                position="2 3 -5" 
+                value="Speed: 1x" 
+                color="orange" 
+                scale="1.5 1.5 1.5"
+                font="dejavu">
         </a-text>
 
         <a-text id="instructions" 
@@ -51,7 +94,8 @@
                 value="Click to Jump/Duck!\nAvoid the red obstacles!" 
                 color="yellow" 
                 scale="1.5 1.5 1.5" 
-                align="center">
+                align="center"
+                font="dejavu">
         </a-text>
 
         <!-- Game Over Screen (hidden initially) -->
@@ -61,7 +105,19 @@
                 color="red" 
                 scale="3 3 3" 
                 align="center" 
-                visible="false">
+                visible="false"
+                font="dejavu">
+        </a-text>
+
+        <!-- Score Popup for bonus points -->
+        <a-text id="score-popup" 
+                position="0 1 -3" 
+                value="+10" 
+                color="lime" 
+                scale="2 2 2" 
+                align="center" 
+                visible="false"
+                font="dejavu">
         </a-text>
     </a-scene>
 
@@ -69,29 +125,83 @@
         // Game variables
         let gameRunning = true;
         let score = 0;
+        let highScore = localStorage.getItem('highScore') || 0;
+        let distance = 0;
         let playerY = 1.6; // Normal height
         let isJumping = false;
         let obstacles = [];
         let obstacleSpeed = 0.05;
         let spawnRate = 0.02;
+        let speedMultiplier = 1;
 
         // Get game elements
         const player = document.querySelector('#player');
         const obstacleContainer = document.querySelector('#obstacle-container');
         const scoreText = document.querySelector('#score-text');
+        const highScoreText = document.querySelector('#high-score-text');
+        const distanceText = document.querySelector('#distance-text');
+        const speedText = document.querySelector('#speed-text');
         const gameOverText = document.querySelector('#game-over');
         const instructions = document.querySelector('#instructions');
+        const scorePopup = document.querySelector('#score-popup');
+
+        // Initialize UI
+        highScoreText.setAttribute('value', `High Score: ${highScore}`);
 
         // Player movement - automatic forward motion
         function movePlayer() {
             if (!gameRunning) return;
             
             const currentPos = player.getAttribute('position');
+            const moveDistance = 0.1 * speedMultiplier;
+            
             player.setAttribute('position', {
                 x: currentPos.x,
                 y: playerY,
-                z: currentPos.z - 0.1 // Move forward automatically
+                z: currentPos.z - moveDistance // Move forward automatically
             });
+            
+            // Update distance traveled
+            distance += moveDistance;
+            distanceText.setAttribute('value', `Distance: ${Math.floor(distance)}m`);
+            
+            // Distance bonus points
+            if (Math.floor(distance) % 50 === 0 && Math.floor(distance) > 0) {
+                addScore(5, "Distance Bonus!");
+            }
+        }
+
+        // Enhanced scoring system
+        function addScore(points, reason = "") {
+            score += points;
+            scoreText.setAttribute('value', `Score: ${score}`);
+            
+            // Show score popup
+            if (reason) {
+                showScorePopup(`+${points}`, reason);
+            }
+            
+            // Check for new high score
+            if (score > highScore) {
+                highScore = score;
+                highScoreText.setAttribute('value', `High Score: ${highScore}`);
+                localStorage.setItem('highScore', highScore);
+            }
+        }
+
+        // Show floating score popup
+        function showScorePopup(scoreText, reason) {
+            scorePopup.setAttribute('value', `${scoreText}\n${reason}`);
+            scorePopup.setAttribute('visible', 'true');
+            scorePopup.setAttribute('position', '0 1 -3');
+            
+            // Animate popup
+            scorePopup.setAttribute('animation', 
+                'property: position; to: 0 2.5 -3; dur: 1000; easing: easeOutQuad');
+            
+            setTimeout(() => {
+                scorePopup.setAttribute('visible', 'false');
+            }, 1000);
         }
 
         // Jump/Duck mechanics
@@ -109,6 +219,7 @@
                 if (playerY === 1.6) {
                     // Jump
                     playerY = 3.0;
+                    addScore(1, "Jump!");
                     setTimeout(() => {
                         playerY = 1.6;
                         isJumping = false;
@@ -120,10 +231,10 @@
         // Create obstacles
         function createObstacle() {
             const obstacle = document.createElement('a-box');
-            const randomX = (Math.random() - 0.5) * 6; // Random X position
+            const randomX = (Math.random() - 0.5) * 10; // Wider spread for longer plane
             const randomY = Math.random() > 0.5 ? 1 : 2.5; // Low or high obstacle
             
-            obstacle.setAttribute('position', `${randomX} ${randomY} -20`);
+            obstacle.setAttribute('position', `${randomX} ${randomY} -30`);
             obstacle.setAttribute('width', '2');
             obstacle.setAttribute('height', '2');
             obstacle.setAttribute('depth', '1');
@@ -135,7 +246,7 @@
                 element: obstacle,
                 x: randomX,
                 y: randomY,
-                z: -20
+                z: -30
             });
         }
 
@@ -144,21 +255,24 @@
             if (!gameRunning) return;
             
             obstacles.forEach((obstacle, index) => {
-                obstacle.z += obstacleSpeed;
+                obstacle.z += obstacleSpeed * speedMultiplier;
                 obstacle.element.setAttribute('position', 
                     `${obstacle.x} ${obstacle.y} ${obstacle.z}`);
                 
                 // Remove obstacles that have passed the player
-                if (obstacle.z > 5) {
+                if (obstacle.z > 10) {
                     obstacle.element.remove();
                     obstacles.splice(index, 1);
-                    score += 10;
-                    scoreText.setAttribute('value', `Score: ${score}`);
+                    addScore(15, "Obstacle Avoided!");
                     
-                    // Increase difficulty
-                    if (score % 100 === 0) {
+                    // Increase difficulty and speed
+                    if (score % 200 === 0 && score > 0) {
+                        speedMultiplier += 0.2;
                         obstacleSpeed += 0.01;
-                        spawnRate += 0.005;
+                        spawnRate += 0.003;
+                        speedText.setAttribute('value', `Speed: ${speedMultiplier.toFixed(1)}x`);
+                        showScorePopup("+50", "Speed Boost!");
+                        addScore(50, "");
                     }
                 }
             });
@@ -188,6 +302,8 @@
         function gameOver() {
             gameRunning = false;
             gameOverText.setAttribute('visible', 'true');
+            gameOverText.setAttribute('value', 
+                `GAME OVER!\nFinal Score: ${score}\nDistance: ${Math.floor(distance)}m\nClick to Restart`);
             instructions.setAttribute('visible', 'false');
         }
 
@@ -195,15 +311,20 @@
         function restartGame() {
             gameRunning = true;
             score = 0;
+            distance = 0;
             playerY = 1.6;
             isJumping = false;
             obstacleSpeed = 0.05;
             spawnRate = 0.02;
+            speedMultiplier = 1;
             
             // Reset UI
             scoreText.setAttribute('value', 'Score: 0');
+            distanceText.setAttribute('value', 'Distance: 0m');
+            speedText.setAttribute('value', 'Speed: 1x');
             gameOverText.setAttribute('visible', 'false');
             instructions.setAttribute('visible', 'true');
+            scorePopup.setAttribute('visible', 'false');
             
             // Clear obstacles
             obstacles.forEach(obstacle => obstacle.element.remove());
@@ -245,3 +366,4 @@
     </script>
 </body>
 </html>
+
