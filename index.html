@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html>
 <head>
     <script src="https://aframe.io/releases/1.7.0/aframe.min.js"></script>
@@ -18,474 +17,250 @@
         <!-- Camera -->
         <a-camera position="0 5 10" look-at="#player"></a-camera>
     </a-scene>
+
     <script>
-    // Get the player element
-    const player = document.querySelector('#player');
-    let playerZ = 0; // Track player's Z position
-    const moveSpeed = 0.05; // How fast the player moves forward
-
-    // Function to move player forward
-    function movePlayer() {
-        playerZ -= moveSpeed; // Move forward (negative Z)
-        player.setAttribute('position', `0 1 ${playerZ}`);
-    }
-
-    // Start the game loop
-    function gameLoop() {
-        movePlayer();
-        requestAnimationFrame(gameLoop); // Keep the loop running
-    }
-
-    // Start the game when the scene loads
-    document.querySelector('a-scene').addEventListener('loaded', () => {
-        gameLoop();
-    });
-
-    // ... (keep your existing code above)
-
-    // Obstacle system
-    let obstacles = [];
-    let obstacleSpawnTimer = 0;
-    const obstacleSpawnRate = 120; // Spawn every 2 seconds (60fps * 2)
-
-    // Create an obstacle
-    function createObstacle() {
-        const obstacle = document.createElement('a-box');
-        obstacle.setAttribute('position', `${Math.random() * 4 - 2} 1 -20`); // Random X position, far ahead
-        obstacle.setAttribute('color', 'red');
-        obstacle.setAttribute('width', '1');
-        obstacle.setAttribute('height', '2');
-        obstacle.setAttribute('depth', '1');
-        obstacle.setAttribute('class', 'obstacle');
+        // Get the player element
+        const player = document.querySelector('#player');
         
-        document.querySelector('a-scene').appendChild(obstacle);
-        obstacles.push({
-            element: obstacle,
-            z: -20
-        });
-    }
+        // Game state variables
+        let gameRunning = true;
+        let score = 0;
+        let gameTime = 0;
+        let lastObstacleCount = 0;
+        
+        // Player variables
+        let playerZ = 0;
+        let playerY = 1;
+        let isJumping = false;
+        let isDucking = false;
+        let jumpSpeed = 0;
+        const jumpPower = 0.3;
+        const gravity = 0.02;
+        const moveSpeed = 0.05;
+        
+        // Obstacle system
+        let obstacles = [];
+        let obstacleSpawnTimer = 0;
+        const obstacleSpawnRate = 120;
 
-    // Move obstacles toward player
-    function updateObstacles() {
-        for (let i = obstacles.length - 1; i >= 0; i--) {
-            const obstacle = obstacles[i];
-            obstacle.z += 0.1; // Move toward player
-            obstacle.element.setAttribute('position', 
-                obstacle.element.getAttribute('position').x + ' 1 ' + obstacle.z);
-            
-            // Remove obstacles that passed the player
-            if (obstacle.z > 5) {
-                obstacle.element.remove();
-                obstacles.splice(i, 1);
+        // Move player forward
+        function movePlayer() {
+            playerZ -= moveSpeed;
+        }
+
+        // Update player movement (jumping/ducking)
+        function updatePlayer() {
+            if (isJumping) {
+                playerY += jumpSpeed;
+                jumpSpeed -= gravity;
+                
+                if (playerY <= 1) {
+                    playerY = 1;
+                    isJumping = false;
+                    jumpSpeed = 0;
+                }
             }
-        }
-    }
-
-    // Update your gameLoop function
-    function gameLoop() {
-        movePlayer();
-        
-        // Spawn obstacles
-        obstacleSpawnTimer++;
-        if (obstacleSpawnTimer >= obstacleSpawnRate) {
-            createObstacle();
-            obstacleSpawnTimer = 0;
-        }
-        
-        updateObstacles();
-        requestAnimationFrame(gameLoop);
-
-    }
-       
-    // ... (keep all your existing code above)
-
-    // Player movement variables
-    let playerY = 1; // Normal height
-    let isJumping = false;
-    let isDucking = false;
-    let jumpSpeed = 0;
-    const jumpPower = 0.3;
-    const gravity = 0.02;
-
-    // Update player movement
-    function updatePlayer() {
-        // Handle jumping
-        if (isJumping) {
-            playerY += jumpSpeed;
-            jumpSpeed -= gravity; // Apply gravity
             
-            // Land back on ground
-            if (playerY <= 1) {
+            if (isDucking) {
+                playerY = 0.5;
+            } else if (!isJumping) {
                 playerY = 1;
-                isJumping = false;
-                jumpSpeed = 0;
+            }
+            
+            player.setAttribute('position', `0 ${playerY} ${playerZ}`);
+        }
+
+        // Create obstacle
+        function createObstacle() {
+            const obstacle = document.createElement('a-box');
+            obstacle.setAttribute('position', `${Math.random() * 4 - 2} 1 -20`);
+            obstacle.setAttribute('color', 'red');
+            obstacle.setAttribute('width', '1');
+            obstacle.setAttribute('height', '2');
+            obstacle.setAttribute('depth', '1');
+            obstacle.setAttribute('class', 'obstacle');
+            
+            document.querySelector('a-scene').appendChild(obstacle);
+            obstacles.push({
+                element: obstacle,
+                z: -20
+            });
+        }
+
+        // Move obstacles toward player
+        function updateObstacles() {
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                const obstacle = obstacles[i];
+                obstacle.z += 0.1;
+                
+                const currentPos = obstacle.element.getAttribute('position');
+                obstacle.element.setAttribute('position', `${currentPos.x} 1 ${obstacle.z}`);
+                
+                if (obstacle.z > 5) {
+                    obstacle.element.remove();
+                    obstacles.splice(i, 1);
+                }
             }
         }
-        
-        // Handle ducking
-        if (isDucking) {
-            playerY = 0.5; // Lower position
-        } else if (!isJumping) {
-            playerY = 1; // Normal position
-        }
-        
-        // Update player position
-        player.setAttribute('position', `0 ${playerY} ${playerZ}`);
-    }
 
-    // Keyboard controls
-    document.addEventListener('keydown', (event) => {
-        if (event.code === 'Space' && !isJumping) {
-            isJumping = true;
-            jumpSpeed = jumpPower;
-            event.preventDefault(); // Prevent page scroll
+        // Collision detection
+        function checkCollisions() {
+            for (let obstacle of obstacles) {
+                const playerPos = player.getAttribute('position');
+                const obstaclePos = obstacle.element.getAttribute('position');
+                
+                const distance = Math.sqrt(
+                    Math.pow(playerPos.x - obstaclePos.x, 2) + 
+                    Math.pow(playerPos.z - obstaclePos.z, 2)
+                );
+                
+                const heightDiff = Math.abs(playerPos.y - obstaclePos.y);
+                
+                if (distance < 1 && heightDiff < 1) {
+                    gameOver();
+                    return true;
+                }
+            }
+            return false;
         }
-        if (event.code === 'ArrowDown') {
-            isDucking = true;
-        }
-    });
 
-    document.addEventListener('keyup', (event) => {
-        if (event.code === 'ArrowDown') {
+        // Create score display
+        function createScoreDisplay() {
+            const scoreDisplay = document.createElement('a-text');
+            scoreDisplay.setAttribute('id', 'scoreDisplay');
+            scoreDisplay.setAttribute('position', '-8 8 -10');
+            scoreDisplay.setAttribute('color', 'white');
+            scoreDisplay.setAttribute('value', 'Score: 0\nTime: 30');
+            scoreDisplay.setAttribute('scale', '1.5 1.5 1.5');
+            
+            document.querySelector('a-scene').appendChild(scoreDisplay);
+        }
+
+        // Update score and timer
+        function updateScore() {
+            gameTime++;
+            
+            if (gameTime % 30 === 0) {
+                score += 10;
+            }
+            
+            if (obstacles.length < lastObstacleCount) {
+                score += 50;
+            }
+            lastObstacleCount = obstacles.length;
+            
+            const timeLeft = Math.max(0, 30 - Math.floor(gameTime / 60));
+            const scoreDisplay = document.querySelector('#scoreDisplay');
+            if (scoreDisplay) {
+                scoreDisplay.setAttribute('value', `Score: ${score}\nTime: ${timeLeft}`);
+            }
+            
+            if (gameTime >= 1800) {
+                youWin();
+            }
+        }
+
+        // Game over screen
+        function gameOver() {
+            gameRunning = false;
+            
+            const gameOverScreen = document.createElement('a-text');
+            gameOverScreen.setAttribute('id', 'gameOverScreen');
+            gameOverScreen.setAttribute('position', '0 3 -5');
+            gameOverScreen.setAttribute('align', 'center');
+            gameOverScreen.setAttribute('color', 'red');
+            gameOverScreen.setAttribute('value', `YOU DIED!\nScore: ${score}\nPress R to Restart`);
+            gameOverScreen.setAttribute('scale', '2 2 2');
+            
+            document.querySelector('a-scene').appendChild(gameOverScreen);
+        }
+
+        // Win screen
+        function youWin() {
+            gameRunning = false;
+            
+            const winScreen = document.createElement('a-text');
+            winScreen.setAttribute('id', 'winScreen');
+            winScreen.setAttribute('position', '0 3 -5');
+            winScreen.setAttribute('align', 'center');
+            winScreen.setAttribute('color', 'green');
+            winScreen.setAttribute('value', `YOU WIN!\nFinal Score: ${score}\nPress R to Play Again`);
+            winScreen.setAttribute('scale', '2 2 2');
+            
+            document.querySelector('a-scene').appendChild(winScreen);
+        }
+
+        // Restart game
+        function restartGame() {
+            const gameOverScreen = document.querySelector('#gameOverScreen');
+            const winScreen = document.querySelector('#winScreen');
+            if (gameOverScreen) gameOverScreen.remove();
+            if (winScreen) winScreen.remove();
+            
+            playerZ = 0;
+            playerY = 1;
+            isJumping = false;
             isDucking = false;
-        }
-    });
-
-    // Update your gameLoop function to include player updates
-    function gameLoop() {
-        movePlayer();
-        updatePlayer(); // Add this line
-        
-        // Spawn obstacles
-        obstacleSpawnTimer++;
-        if (obstacleSpawnTimer >= obstacleSpawnRate) {
-            createObstacle();
+            jumpSpeed = 0;
+            
+            obstacles.forEach(obstacle => obstacle.element.remove());
+            obstacles = [];
+            
+            gameRunning = true;
+            score = 0;
+            gameTime = 0;
             obstacleSpawnTimer = 0;
+            lastObstacleCount = 0;
         }
-        
-        updateObstacles();
-        requestAnimationFrame(gameLoop);
-    }
- // ... (keep all your existing code above)
 
-    // Collision detection
-    function checkCollisions() {
-        for (let obstacle of obstacles) {
-            const playerPos = player.getAttribute('position');
-            const obstaclePos = obstacle.element.getAttribute('position');
-            
-            // Check if player and obstacle are close enough to collide
-            const distance = Math.sqrt(
-                Math.pow(playerPos.x - obstaclePos.x, 2) + 
-                Math.pow(playerPos.z - obstaclePos.z, 2)
-            );
-            
-            // Check height collision too
-            const heightDiff = Math.abs(playerPos.y - obstaclePos.y);
-            
-            if (distance < 1 && heightDiff < 1) {
-                gameOver(); // We'll create this function next
-                return true;
+        // Keyboard controls
+        document.addEventListener('keydown', (event) => {
+            if (event.code === 'Space' && !isJumping && gameRunning) {
+                isJumping = true;
+                jumpSpeed = jumpPower;
+                event.preventDefault();
             }
-        }
-        return false;
-    }
+            if (event.code === 'ArrowDown' && gameRunning) {
+                isDucking = true;
+            }
+            if (event.code === 'KeyR' && !gameRunning) {
+                restartGame();
+            }
+        });
 
-    // Add collision check to your gameLoop
-    function gameLoop() {
-        movePlayer();
-        updatePlayer();
-        
-        obstacleSpawnTimer++;
-        if (obstacleSpawnTimer >= obstacleSpawnRate) {
-            createObstacle();
-            obstacleSpawnTimer = 0;
-        }
-        
-        updateObstacles();
-        checkCollisions(); // Add this line
-        requestAnimationFrame(gameLoop);
-    }
-    // ... (keep all your existing code above)
+        document.addEventListener('keyup', (event) => {
+            if (event.code === 'ArrowDown') {
+                isDucking = false;
+            }
+        });
 
-    // Game state variables
-    let gameRunning = true;
-    let score = 0;
-
-    // Create game over screen
-    function gameOver() {
-        gameRunning = false;
-        
-        // Create game over overlay
-        const gameOverScreen = document.createElement('a-text');
-        gameOverScreen.setAttribute('id', 'gameOverScreen');
-        gameOverScreen.setAttribute('position', '0 3 -5');
-        gameOverScreen.setAttribute('align', 'center');
-        gameOverScreen.setAttribute('color', 'red');
-        gameOverScreen.setAttribute('value', `YOU DIED!\nScore: ${score}\nPress R to Restart`);
-        gameOverScreen.setAttribute('scale', '2 2 2');
-        
-        document.querySelector('a-scene').appendChild(gameOverScreen);
-    }
-
-    // Restart game function
-    function restartGame() {
-        // Remove game over screen
-        const gameOverScreen = document.querySelector('#gameOverScreen');
-        if (gameOverScreen) {
-            gameOverScreen.remove();
-        }
-        
-        // Reset player position
-        playerZ = 0;
-        playerY = 1;
-        isJumping = false;
-        isDucking = false;
-        jumpSpeed = 0;
-        
-        // Clear all obstacles
-        obstacles.forEach(obstacle => obstacle.element.remove());
-        obstacles = [];
-        
-        // Reset game state
-        gameRunning = true;
-        score = 0;
-        obstacleSpawnTimer = 0;
-    }
-
-    // Add restart key to keyboard controls
-    document.addEventListener('keydown', (event) => {
-        if (event.code === 'Space' && !isJumping && gameRunning) {
-            isJumping = true;
-            jumpSpeed = jumpPower;
-            event.preventDefault();
-        }
-        if (event.code === 'ArrowDown' && gameRunning) {
-            isDucking = true;
-        }
-        if (event.code === 'KeyR' && !gameRunning) { // Add this
-            restartGame();
-        }
-    });
-
-    // Update gameLoop to only run when game is active
-    function gameLoop() {
-        if (!gameRunning) return;
-        
-        movePlayer();
-        updatePlayer();
-        
-        obstacleSpawnTimer++;
-        if (obstacleSpawnTimer >= obstacleSpawnRate) {
-            createObstacle();
-            obstacleSpawnTimer = 0;
-        }
-        
-        updateObstacles();
-        checkCollisions();
-        requestAnimationFrame(gameLoop);
-    }
-         // ... (keep all your existing code above)
-
-    // Game state variables
-    let gameRunning = true;
-    let score = 0;
-
-    // Create game over screen
-    function gameOver() {
-        gameRunning = false;
-        
-        // Create game over overlay
-        const gameOverScreen = document.createElement('a-text');
-        gameOverScreen.setAttribute('id', 'gameOverScreen');
-        gameOverScreen.setAttribute('position', '0 3 -5');
-        gameOverScreen.setAttribute('align', 'center');
-        gameOverScreen.setAttribute('color', 'red');
-        gameOverScreen.setAttribute('value', `YOU DIED!\nScore: ${score}\nPress R to Restart`);
-        gameOverScreen.setAttribute('scale', '2 2 2');
-        
-        document.querySelector('a-scene').appendChild(gameOverScreen);
-    }
-
-    // Restart game function
-    function restartGame() {
-        // Remove game over screen
-        const gameOverScreen = document.querySelector('#gameOverScreen');
-        if (gameOverScreen) {
-            gameOverScreen.remove();
-        }
-        
-        // Reset player position
-        playerZ = 0;
-        playerY = 1;
-        isJumping = false;
-        isDucking = false;
-        jumpSpeed = 0;
-        
-        // Clear all obstacles
-        obstacles.forEach(obstacle => obstacle.element.remove());
-        obstacles = [];
-        
-        // Reset game state
-        gameRunning = true;
-        score = 0;
-        obstacleSpawnTimer = 0;
-    }
-
-    // Add restart key to keyboard controls
-    document.addEventListener('keydown', (event) => {
-        if (event.code === 'Space' && !isJumping && gameRunning) {
-            isJumping = true;
-            jumpSpeed = jumpPower;
-            event.preventDefault();
-        }
-        if (event.code === 'ArrowDown' && gameRunning) {
-            isDucking = true;
-        }
-        if (event.code === 'KeyR' && !gameRunning) { // Add this
-            restartGame();
-        }
-    });
-
-    // Update gameLoop to only run when game is active
-    function gameLoop() {
-        if (!gameRunning) return;
-        
-        movePlayer();
-        updatePlayer();
-        
-        obstacleSpawnTimer++;
-        if (obstacleSpawnTimer >= obstacleSpawnRate) {
-            createObstacle();
-            obstacleSpawnTimer = 0;
-        }
-        
-        updateObstacles();
-        checkCollisions();
-        requestAnimationFrame(gameLoop);
-    }
-
-
-
-    // ... (keep all your existing code above)
-
-    // Timer and scoring variables
-    let gameTime = 0;
-    let lastObstacleCount = 0;
-
-    // Create score display
-    function createScoreDisplay() {
-        const scoreDisplay = document.createElement('a-text');
-        scoreDisplay.setAttribute('id', 'scoreDisplay');
-        scoreDisplay.setAttribute('position', '-8 8 -10');
-        scoreDisplay.setAttribute('color', 'white');
-        scoreDisplay.setAttribute('value', 'Score: 0\nTime: 30');
-        scoreDisplay.setAttribute('scale', '1.5 1.5 1.5');
-        
-        document.querySelector('a-scene').appendChild(scoreDisplay);
-    }
-
-    // Update score and timer
-    function updateScore() {
-        gameTime++;
-        
-        // Award points for surviving (every half second)
-        if (gameTime % 30 === 0) {
-            score += 10;
-        }
-        
-        // Award bonus points for avoiding obstacles
-        if (obstacles.length < lastObstacleCount) {
-            score += 50; // Bonus for obstacle that passed
-        }
-        lastObstacleCount = obstacles.length;
-        
-        // Update display
-        const timeLeft = Math.max(0, 30 - Math.floor(gameTime / 60));
-        const scoreDisplay = document.querySelector('#scoreDisplay');
-        if (scoreDisplay) {
-            scoreDisplay.setAttribute('value', `Score: ${score}\nTime: ${timeLeft}`);
-        }
-        
-        // Check win condition (30 seconds = 1800 frames at 60fps)
-        if (gameTime >= 1800) {
-            youWin();
-        }
-    }
-
-    // Win screen
-    function youWin() {
-        gameRunning = false;
-        
-        const winScreen = document.createElement('a-text');
-        winScreen.setAttribute('id', 'winScreen');
-        winScreen.setAttribute('position', '0 3 -5');
-        winScreen.setAttribute('align', 'center');
-        winScreen.setAttribute('color', 'green');
-        winScreen.setAttribute('value', `YOU WIN!\nFinal Score: ${score}\nPress R to Play Again`);
-        winScreen.setAttribute('scale', '2 2 2');
-        
-        document.querySelector('a-scene').appendChild(winScreen);
-    }
-
-    // Update restart function to clean up displays
-    function restartGame() {
-        // Remove screens
-        const gameOverScreen = document.querySelector('#gameOverScreen');
-        const winScreen = document.querySelector('#winScreen');
-        if (gameOverScreen) gameOverScreen.remove();
-        if (winScreen) winScreen.remove();
-        
-        // Reset everything
-        playerZ = 0;
-        playerY = 1;
-        isJumping = false;
-        isDucking = false;
-        jumpSpeed = 0;
-        
-        obstacles.forEach(obstacle => obstacle.element.remove());
-        obstacles = [];
-        
-        gameRunning = true;
-        score = 0;
-        gameTime = 0;
-        obstacleSpawnTimer = 0;
-        lastObstacleCount = 0;
-    }
-
-    // Update gameLoop to include scoring
-    function gameLoop() {
-        if (!gameRunning) {
+        // Main game loop
+        function gameLoop() {
+            if (!gameRunning) {
+                requestAnimationFrame(gameLoop);
+                return;
+            }
+            
+            movePlayer();
+            updatePlayer();
+            updateScore();
+            
+            obstacleSpawnTimer++;
+            if (obstacleSpawnTimer >= obstacleSpawnRate) {
+                createObstacle();
+                obstacleSpawnTimer = 0;
+            }
+            
+            updateObstacles();
+            checkCollisions();
             requestAnimationFrame(gameLoop);
-            return;
         }
-        
-        movePlayer();
-        updatePlayer();
-        updateScore(); // Add this line
-        
-        obstacleSpawnTimer++;
-        if (obstacleSpawnTimer >= obstacleSpawnRate) {
-            createObstacle();
-            obstacleSpawnTimer = 0;
-        }
-        
-        updateObstacles();
-        checkCollisions();
-        requestAnimationFrame(gameLoop);
-    }
 
-    // Initialize score display when game starts
-    document.querySelector('a-scene').addEventListener('loaded', () => {
-        createScoreDisplay();
-        gameLoop();
-    });
-</script>
+        // Start the game
+        document.querySelector('a-scene').addEventListener('loaded', () => {
+            createScoreDisplay();
+            gameLoop();
+        });
+    </script>
 </body>
 </html>
-
-
-
-
-
-
