@@ -1,481 +1,512 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Avoid the Obstacles - VR Game</title>
     <script src="https://aframe.io/releases/1.7.0/aframe.min.js"></script>
 </head>
 <body>
-    <a-scene background="color: #87CEEB" vr-mode-ui="enabled: false">
-        <!-- Assets -->
-        <a-assets>
-            <a-mixin id="obstacle" 
-                     geometry="primitive: box; width: 2; height: 2; depth: 1" 
-                     material="color: red"
-                     animation="property: position; to: 0 0 100; dur: 3000; loop: true">
-            </a-mixin>
-        </a-assets>
-
-        <!-- Player Camera -->
-        <a-camera id="player" 
-                  position="0 1.6 0" 
-                  wasd-controls="enabled: false"
-                  look-controls="enabled: true">
-            <!-- Crosshair for clicking -->
-            <a-cursor geometry="primitive: ring; radiusInner: 0.02; radiusOuter: 0.03"
-                      material="color: white; shader: flat"
-                      position="0 0 -1">
-            </a-cursor>
-        </a-camera>
-
-        <!-- Much Longer Ground Plane -->
-        <a-plane position="0 0 0" 
-                 rotation="-90 0 0" 
-                 width="15" 
-                 height="500" 
-                 color="#4CC3D9"
-                 material="side: double">
-        </a-plane>
-
-        <!-- Side Walls for Visual Boundaries -->
-        <a-plane position="-7.5 2 0" 
-                 rotation="0 0 0" 
-                 width="500" 
-                 height="4" 
-                 color="#2E8B57"
-                 material="side: double">
-        </a-plane>
+    <a-scene>
+        <!-- Ground -->
+        <a-plane position="0 0 0" rotation="-90 0 0" width="20" height="50" color="#7BC8A4"></a-plane>
         
-        <a-plane position="7.5 2 0" 
-                 rotation="0 0 0" 
-                 width="500" 
-                 height="4" 
-                 color="#2E8B57"
-                 material="side: double">
-        </a-plane>
-
-        <!-- Obstacles (will be created by JavaScript) -->
-        <a-entity id="obstacle-container"></a-entity>
-
-        <!-- Enhanced UI Elements -->
-        <a-text id="score-text" 
-                position="-4 3.5 -5" 
-                value="Score: 0" 
-                color="white" 
-                scale="2 2 2"
-                font="dejavu">
-        </a-text>
-
-        <a-text id="high-score-text" 
-                position="-4 3 -5" 
-                value="High Score: 0" 
-                color="yellow" 
-                scale="1.5 1.5 1.5"
-                font="dejavu">
-        </a-text>
-
-        <a-text id="distance-text" 
-                position="2 3.5 -5" 
-                value="Distance: 0m" 
-                color="cyan" 
-                scale="2 2 2"
-                font="dejavu">
-        </a-text>
-
-        <a-text id="speed-text" 
-                position="2 3 -5" 
-                value="Speed: 1x" 
-                color="orange" 
-                scale="1.5 1.5 1.5"
-                font="dejavu">
-        </a-text>
-
-        <a-text id="obstacles-avoided-text" 
-                position="0 2.5 -5" 
-                value="Obstacles Avoided: 0" 
-                color="lime" 
-                scale="1.5 1.5 1.5"
-                font="dejavu">
-        </a-text>
-
-        <a-text id="instructions" 
-                position="0 1.5 -5" 
-                value="Click to Jump/Duck!\nAvoid the red obstacles!" 
-                color="yellow" 
-                scale="1.5 1.5 1.5" 
-                align="center"
-                font="dejavu">
-        </a-text>
-
-        <!-- Game Over Screen with Detailed Stats (hidden initially) -->
-        <a-entity id="game-over-screen" visible="false">
-            <!-- Background for game over screen -->
-            <a-plane position="0 0 -4.9" 
-                     width="12" 
-                     height="8" 
-                     color="#000000" 
-                     opacity="0.8">
-            </a-plane>
-            
-            <!-- Game Over Title -->
-            <a-text id="game-over-title" 
-                    position="0 2.5 -5" 
-                    value="GAME OVER!" 
-                    color="red" 
-                    scale="4 4 4" 
-                    align="center"
-                    font="dejavu">
-            </a-text>
-            
-            <!-- Final Stats -->
-            <a-text id="final-score" 
-                    position="0 1.5 -5" 
-                    value="Final Score: 0" 
-                    color="white" 
-                    scale="2.5 2.5 2.5" 
-                    align="center"
-                    font="dejavu">
-            </a-text>
-            
-            <a-text id="final-distance" 
-                    position="0 0.8 -5" 
-                    value="Distance Traveled: 0m" 
-                    color="cyan" 
-                    scale="2 2 2" 
-                    align="center"
-                    font="dejavu">
-            </a-text>
-            
-            <a-text id="final-obstacles" 
-                    position="0 0.3 -5" 
-                    value="Obstacles Avoided: 0" 
-                    color="lime" 
-                    scale="2 2 2" 
-                    align="center"
-                    font="dejavu">
-            </a-text>
-            
-            <a-text id="final-speed" 
-                    position="0 -0.2 -5" 
-                    value="Max Speed: 1x" 
-                    color="orange" 
-                    scale="2 2 2" 
-                    align="center"
-                    font="dejavu">
-            </a-text>
-            
-            <a-text id="high-score-status" 
-                    position="0 -0.7 -5" 
-                    value="" 
-                    color="gold" 
-                    scale="2 2 2" 
-                    align="center"
-                    font="dejavu">
-            </a-text>
-            
-            <a-text id="restart-text" 
-                    position="0 -1.5 -5" 
-                    value="Click Anywhere to Restart" 
-                    color="yellow" 
-                    scale="1.8 1.8 1.8" 
-                    align="center"
-                    font="dejavu">
-            </a-text>
-        </a-entity>
-
-        <!-- Score Popup for bonus points -->
-        <a-text id="score-popup" 
-                position="0 1 -3" 
-                value="+10" 
-                color="lime" 
-                scale="2 2 2" 
-                align="center" 
-                visible="false"
-                font="dejavu">
-        </a-text>
+        <!-- Avatar -->
+        <a-box id="player" position="0 1 0" color="blue" width="1" height="1" depth="1"></a-box>
+        
+        <!-- Lighting -->
+        <a-light type="ambient" color="#404040"></a-light>
+        <a-light type="directional" position="0 10 0" color="#ffffff"></a-light>
+        
+        <!-- Camera -->
+        <a-camera position="0 5 10" look-at="#player"></a-camera>
     </a-scene>
-
     <script>
-        // Game variables
-        let gameRunning = true;
-        let score = 0;
-        let highScore = localStorage.getItem('highScore') || 0;
-        let distance = 0;
-        let obstaclesAvoided = 0;
-        let playerY = 1.6; // Normal height
-        let isJumping = false;
-        let obstacles = [];
-        let obstacleSpeed = 0.05;
-        let spawnRate = 0.015; // Increased spawn rate for more obstacles
-        let speedMultiplier = 1;
-        let maxSpeed = 1;
+    // Get the player element
+    const player = document.querySelector('#player');
+    let playerZ = 0; // Track player's Z position
+    const moveSpeed = 0.05; // How fast the player moves forward
 
-        // Get game elements
-        const player = document.querySelector('#player');
-        const obstacleContainer = document.querySelector('#obstacle-container');
-        const scoreText = document.querySelector('#score-text');
-        const highScoreText = document.querySelector('#high-score-text');
-        const distanceText = document.querySelector('#distance-text');
-        const speedText = document.querySelector('#speed-text');
-        const obstaclesAvoidedText = document.querySelector('#obstacles-avoided-text');
-        const gameOverScreen = document.querySelector('#game-over-screen');
-        const instructions = document.querySelector('#instructions');
-        const scorePopup = document.querySelector('#score-popup');
+    // Function to move player forward
+    function movePlayer() {
+        playerZ -= moveSpeed; // Move forward (negative Z)
+        player.setAttribute('position', `0 1 ${playerZ}`);
+    }
 
-        // Game over screen elements
-        const finalScore = document.querySelector('#final-score');
-        const finalDistance = document.querySelector('#final-distance');
-        const finalObstacles = document.querySelector('#final-obstacles');
-        const finalSpeed = document.querySelector('#final-speed');
-        const highScoreStatus = document.querySelector('#high-score-status');
+    // Start the game loop
+    function gameLoop() {
+        movePlayer();
+        requestAnimationFrame(gameLoop); // Keep the loop running
+    }
 
-        // Initialize UI
-        highScoreText.setAttribute('value', `High Score: ${highScore}`);
+    // Start the game when the scene loads
+    document.querySelector('a-scene').addEventListener('loaded', () => {
+        gameLoop();
+    });
 
-        // Player movement - automatic forward motion
-        function movePlayer() {
-            if (!gameRunning) return;
-            
-            const currentPos = player.getAttribute('position');
-            const moveDistance = 0.1 * speedMultiplier;
-            
-            player.setAttribute('position', {
-                x: currentPos.x,
-                y: playerY,
-                z: currentPos.z - moveDistance // Move forward automatically
-            });
-            
-            // Update distance traveled
-            distance += moveDistance;
-            distanceText.setAttribute('value', `Distance: ${Math.floor(distance)}m`);
-            
-            // Distance bonus points
-            if (Math.floor(distance) % 50 === 0 && Math.floor(distance) > 0) {
-                addScore(5, "Distance Bonus!");
-            }
-        }
+    // ... (keep your existing code above)
 
-        // Enhanced scoring system
-        function addScore(points, reason = "") {
-            score += points;
-            scoreText.setAttribute('value', `Score: ${score}`);
-            
-            // Show score popup
-            if (reason) {
-                showScorePopup(`+${points}`, reason);
-            }
-            
-            // Check for new high score
-            if (score > highScore) {
-                highScore = score;
-                highScoreText.setAttribute('value', `High Score: ${highScore}`);
-                localStorage.setItem('highScore', highScore);
-            }
-        }
+    // Obstacle system
+    let obstacles = [];
+    let obstacleSpawnTimer = 0;
+    const obstacleSpawnRate = 120; // Spawn every 2 seconds (60fps * 2)
 
-        // Show floating score popup
-        function showScorePopup(scoreText, reason) {
-            scorePopup.setAttribute('value', `${scoreText}\n${reason}`);
-            scorePopup.setAttribute('visible', 'true');
-            scorePopup.setAttribute('position', '0 1 -3');
-            
-            // Animate popup
-            scorePopup.setAttribute('animation', 
-                'property: position; to: 0 2.5 -3; dur: 1000; easing: easeOutQuad');
-            
-            setTimeout(() => {
-                scorePopup.setAttribute('visible', 'false');
-            }, 1000);
-        }
-
-        // Jump/Duck mechanics
-        function handleClick() {
-            if (!gameRunning) {
-                // Restart game
-                restartGame();
-                return;
-            }
-
-            if (!isJumping) {
-                isJumping = true;
-                
-                // Alternate between jump (up) and duck (down)
-                if (playerY === 1.6) {
-                    // Jump
-                    playerY = 3.0;
-                    addScore(1, "Jump!");
-                    setTimeout(() => {
-                        playerY = 1.6;
-                        isJumping = false;
-                    }, 500);
-                }
-            }
-        }
-
-        // Create obstacles - NOW SPAWNS ACROSS ENTIRE PLANE WIDTH
-        function createObstacle() {
-            const obstacle = document.createElement('a-box');
-            // Spawn across the full width of the plane (-7 to +7 for 15-unit wide plane)
-            const randomX = (Math.random() - 0.5) * 14; // Full plane width coverage
-            const randomY = Math.random() > 0.6 ? 1 : 2.5; // More low obstacles
-            
-            obstacle.setAttribute('position', `${randomX} ${randomY} -30`);
-            obstacle.setAttribute('width', '2');
-            obstacle.setAttribute('height', '2');
-            obstacle.setAttribute('depth', '1');
-            obstacle.setAttribute('color', 'red');
-            obstacle.setAttribute('class', 'obstacle');
-            
-            // Add some visual variety
-            const colors = ['red', '#FF4500', '#DC143C', '#B22222'];
-            const randomColor = colors[Math.floor(Math.random() * colors.length)];
-            obstacle.setAttribute('color', randomColor);
-            
-            obstacleContainer.appendChild(obstacle);
-            obstacles.push({
-                element: obstacle,
-                x: randomX,
-                y: randomY,
-                z: -30
-            });
-        }
-
-        // Move obstacles toward player
-        function moveObstacles() {
-            if (!gameRunning) return;
-            
-            obstacles.forEach((obstacle, index) => {
-                obstacle.z += obstacleSpeed * speedMultiplier;
-                obstacle.element.setAttribute('position', 
-                    `${obstacle.x} ${obstacle.y} ${obstacle.z}`);
-                
-                // Remove obstacles that have passed the player
-                if (obstacle.z > 10) {
-                    obstacle.element.remove();
-                    obstacles.splice(index, 1);
-                    obstaclesAvoided++;
-                    obstaclesAvoidedText.setAttribute('value', `Obstacles Avoided: ${obstaclesAvoided}`);
-                    addScore(15, "Obstacle Avoided!");
-                    
-                    // Increase difficulty and speed
-                    if (obstaclesAvoided % 10 === 0 && obstaclesAvoided > 0) {
-                        speedMultiplier += 0.2;
-                        maxSpeed = Math.max(maxSpeed, speedMultiplier);
-                        obstacleSpeed += 0.01;
-                        spawnRate += 0.005;
-                        speedText.setAttribute('value', `Speed: ${speedMultiplier.toFixed(1)}x`);
-                        showScorePopup("+50", "Speed Boost!");
-                        addScore(50, "");
-                    }
-                }
-            });
-        }
-
-        // Collision detection
-        function checkCollisions() {
-            if (!gameRunning) return;
-            
-            const playerPos = player.getAttribute('position');
-            
-            obstacles.forEach(obstacle => {
-                const distance = Math.sqrt(
-                    Math.pow(playerPos.x - obstacle.x, 2) +
-                    Math.pow(playerPos.y - obstacle.y, 2) +
-                    Math.pow(playerPos.z - obstacle.z, 2)
-                );
-                
-                // Collision detected
-                if (distance < 1.5) {
-                    gameOver();
-                }
-            });
-        }
-
-        // Game over with detailed stats
-        function gameOver() {
-            gameRunning = false;
-            
-            // Hide game UI
-            instructions.setAttribute('visible', 'false');
-            
-            // Update final stats
-            finalScore.setAttribute('value', `Final Score: ${score}`);
-            finalDistance.setAttribute('value', `Distance Traveled: ${Math.floor(distance)}m`);
-            finalObstacles.setAttribute('value', `Obstacles Avoided: ${obstaclesAvoided}`);
-            finalSpeed.setAttribute('value', `Max Speed Reached: ${maxSpeed.toFixed(1)}x`);
-            
-            // Check if new high score
-            if (score >= highScore) {
-                highScoreStatus.setAttribute('value', '🏆 NEW HIGH SCORE! 🏆');
-                highScoreStatus.setAttribute('color', 'gold');
-            } else {
-                highScoreStatus.setAttribute('value', `High Score: ${highScore}`);
-                highScoreStatus.setAttribute('color', 'yellow');
-            }
-            
-            // Show game over screen
-            gameOverScreen.setAttribute('visible', 'true');
-        }
-
-        // Restart game - COMPLETE FUNCTION
-        function restartGame() {
-            gameRunning = true;
-            score = 0;
-            distance = 0;
-            obstaclesAvoided = 0;
-            playerY = 1.6;
-            isJumping = false;
-            obstacleSpeed = 0.05;
-            spawnRate = 0.02;
-            speedMultiplier = 1;
-            maxSpeed = 1;
-            
-            // Reset UI
-            scoreText.setAttribute('value', 'Score: 0');
-            distanceText.setAttribute('value', 'Distance: 0m');
-            speedText.setAttribute('value', 'Speed: 1x');
-            obstaclesAvoidedText.setAttribute('value', 'Obstacles Avoided: 0');
-            gameOverScreen.setAttribute('visible', 'false');
-            instructions.setAttribute('visible', 'true');
-            scorePopup.setAttribute('visible', 'false');
-            
-            // Clear all obstacles
-            obstacles.forEach(obstacle => obstacle.element.remove());
-            obstacles = [];
-            
-            // Reset player position
-            player.setAttribute('position', '0 1.6 0');
-        }
-
-        // Game loop
-        function gameLoop() {
-            if (gameRunning) {
-                movePlayer();
-                moveObstacles();
-                checkCollisions();
-                
-                // Spawn new obstacles randomly across the plane
-                if (Math.random() < spawnRate) {
-                    createObstacle();
-                }
-            }
-            
-            requestAnimationFrame(gameLoop);
-        }
-
-        // Event listeners
-        document.addEventListener('click', handleClick);
-        document.addEventListener('keydown', (event) => {
-            if (event.code === 'Space') {
-                event.preventDefault();
-                handleClick();
-            }
+    // Create an obstacle
+    function createObstacle() {
+        const obstacle = document.createElement('a-box');
+        obstacle.setAttribute('position', `${Math.random() * 4 - 2} 1 -20`); // Random X position, far ahead
+        obstacle.setAttribute('color', 'red');
+        obstacle.setAttribute('width', '1');
+        obstacle.setAttribute('height', '2');
+        obstacle.setAttribute('depth', '1');
+        obstacle.setAttribute('class', 'obstacle');
+        
+        document.querySelector('a-scene').appendChild(obstacle);
+        obstacles.push({
+            element: obstacle,
+            z: -20
         });
+    }
 
-        // Start the game after a short delay
-        setTimeout(() => {
-            gameLoop();
-        }, 1000);
-    </script>
+    // Move obstacles toward player
+    function updateObstacles() {
+        for (let i = obstacles.length - 1; i >= 0; i--) {
+            const obstacle = obstacles[i];
+            obstacle.z += 0.1; // Move toward player
+            obstacle.element.setAttribute('position', 
+                obstacle.element.getAttribute('position').x + ' 1 ' + obstacle.z);
+            
+            // Remove obstacles that passed the player
+            if (obstacle.z > 5) {
+                obstacle.element.remove();
+                obstacles.splice(i, 1);
+            }
+        }
+    }
+
+    // Update your gameLoop function
+    function gameLoop() {
+        movePlayer();
+        
+        // Spawn obstacles
+        obstacleSpawnTimer++;
+        if (obstacleSpawnTimer >= obstacleSpawnRate) {
+            createObstacle();
+            obstacleSpawnTimer = 0;
+        }
+        
+        updateObstacles();
+        requestAnimationFrame(gameLoop);
+
+    }
+       
+    // ... (keep all your existing code above)
+
+    // Player movement variables
+    let playerY = 1; // Normal height
+    let isJumping = false;
+    let isDucking = false;
+    let jumpSpeed = 0;
+    const jumpPower = 0.3;
+    const gravity = 0.02;
+
+    // Update player movement
+    function updatePlayer() {
+        // Handle jumping
+        if (isJumping) {
+            playerY += jumpSpeed;
+            jumpSpeed -= gravity; // Apply gravity
+            
+            // Land back on ground
+            if (playerY <= 1) {
+                playerY = 1;
+                isJumping = false;
+                jumpSpeed = 0;
+            }
+        }
+        
+        // Handle ducking
+        if (isDucking) {
+            playerY = 0.5; // Lower position
+        } else if (!isJumping) {
+            playerY = 1; // Normal position
+        }
+        
+        // Update player position
+        player.setAttribute('position', `0 ${playerY} ${playerZ}`);
+    }
+
+    // Keyboard controls
+    document.addEventListener('keydown', (event) => {
+        if (event.code === 'Space' && !isJumping) {
+            isJumping = true;
+            jumpSpeed = jumpPower;
+            event.preventDefault(); // Prevent page scroll
+        }
+        if (event.code === 'ArrowDown') {
+            isDucking = true;
+        }
+    });
+
+    document.addEventListener('keyup', (event) => {
+        if (event.code === 'ArrowDown') {
+            isDucking = false;
+        }
+    });
+
+    // Update your gameLoop function to include player updates
+    function gameLoop() {
+        movePlayer();
+        updatePlayer(); // Add this line
+        
+        // Spawn obstacles
+        obstacleSpawnTimer++;
+        if (obstacleSpawnTimer >= obstacleSpawnRate) {
+            createObstacle();
+            obstacleSpawnTimer = 0;
+        }
+        
+        updateObstacles();
+        requestAnimationFrame(gameLoop);
+    }
+ // ... (keep all your existing code above)
+
+    // Collision detection
+    function checkCollisions() {
+        for (let obstacle of obstacles) {
+            const playerPos = player.getAttribute('position');
+            const obstaclePos = obstacle.element.getAttribute('position');
+            
+            // Check if player and obstacle are close enough to collide
+            const distance = Math.sqrt(
+                Math.pow(playerPos.x - obstaclePos.x, 2) + 
+                Math.pow(playerPos.z - obstaclePos.z, 2)
+            );
+            
+            // Check height collision too
+            const heightDiff = Math.abs(playerPos.y - obstaclePos.y);
+            
+            if (distance < 1 && heightDiff < 1) {
+                gameOver(); // We'll create this function next
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Add collision check to your gameLoop
+    function gameLoop() {
+        movePlayer();
+        updatePlayer();
+        
+        obstacleSpawnTimer++;
+        if (obstacleSpawnTimer >= obstacleSpawnRate) {
+            createObstacle();
+            obstacleSpawnTimer = 0;
+        }
+        
+        updateObstacles();
+        checkCollisions(); // Add this line
+        requestAnimationFrame(gameLoop);
+    }
+    // ... (keep all your existing code above)
+
+    // Game state variables
+    let gameRunning = true;
+    let score = 0;
+
+    // Create game over screen
+    function gameOver() {
+        gameRunning = false;
+        
+        // Create game over overlay
+        const gameOverScreen = document.createElement('a-text');
+        gameOverScreen.setAttribute('id', 'gameOverScreen');
+        gameOverScreen.setAttribute('position', '0 3 -5');
+        gameOverScreen.setAttribute('align', 'center');
+        gameOverScreen.setAttribute('color', 'red');
+        gameOverScreen.setAttribute('value', `YOU DIED!\nScore: ${score}\nPress R to Restart`);
+        gameOverScreen.setAttribute('scale', '2 2 2');
+        
+        document.querySelector('a-scene').appendChild(gameOverScreen);
+    }
+
+    // Restart game function
+    function restartGame() {
+        // Remove game over screen
+        const gameOverScreen = document.querySelector('#gameOverScreen');
+        if (gameOverScreen) {
+            gameOverScreen.remove();
+        }
+        
+        // Reset player position
+        playerZ = 0;
+        playerY = 1;
+        isJumping = false;
+        isDucking = false;
+        jumpSpeed = 0;
+        
+        // Clear all obstacles
+        obstacles.forEach(obstacle => obstacle.element.remove());
+        obstacles = [];
+        
+        // Reset game state
+        gameRunning = true;
+        score = 0;
+        obstacleSpawnTimer = 0;
+    }
+
+    // Add restart key to keyboard controls
+    document.addEventListener('keydown', (event) => {
+        if (event.code === 'Space' && !isJumping && gameRunning) {
+            isJumping = true;
+            jumpSpeed = jumpPower;
+            event.preventDefault();
+        }
+        if (event.code === 'ArrowDown' && gameRunning) {
+            isDucking = true;
+        }
+        if (event.code === 'KeyR' && !gameRunning) { // Add this
+            restartGame();
+        }
+    });
+
+    // Update gameLoop to only run when game is active
+    function gameLoop() {
+        if (!gameRunning) return;
+        
+        movePlayer();
+        updatePlayer();
+        
+        obstacleSpawnTimer++;
+        if (obstacleSpawnTimer >= obstacleSpawnRate) {
+            createObstacle();
+            obstacleSpawnTimer = 0;
+        }
+        
+        updateObstacles();
+        checkCollisions();
+        requestAnimationFrame(gameLoop);
+    }
+         // ... (keep all your existing code above)
+
+    // Game state variables
+    let gameRunning = true;
+    let score = 0;
+
+    // Create game over screen
+    function gameOver() {
+        gameRunning = false;
+        
+        // Create game over overlay
+        const gameOverScreen = document.createElement('a-text');
+        gameOverScreen.setAttribute('id', 'gameOverScreen');
+        gameOverScreen.setAttribute('position', '0 3 -5');
+        gameOverScreen.setAttribute('align', 'center');
+        gameOverScreen.setAttribute('color', 'red');
+        gameOverScreen.setAttribute('value', `YOU DIED!\nScore: ${score}\nPress R to Restart`);
+        gameOverScreen.setAttribute('scale', '2 2 2');
+        
+        document.querySelector('a-scene').appendChild(gameOverScreen);
+    }
+
+    // Restart game function
+    function restartGame() {
+        // Remove game over screen
+        const gameOverScreen = document.querySelector('#gameOverScreen');
+        if (gameOverScreen) {
+            gameOverScreen.remove();
+        }
+        
+        // Reset player position
+        playerZ = 0;
+        playerY = 1;
+        isJumping = false;
+        isDucking = false;
+        jumpSpeed = 0;
+        
+        // Clear all obstacles
+        obstacles.forEach(obstacle => obstacle.element.remove());
+        obstacles = [];
+        
+        // Reset game state
+        gameRunning = true;
+        score = 0;
+        obstacleSpawnTimer = 0;
+    }
+
+    // Add restart key to keyboard controls
+    document.addEventListener('keydown', (event) => {
+        if (event.code === 'Space' && !isJumping && gameRunning) {
+            isJumping = true;
+            jumpSpeed = jumpPower;
+            event.preventDefault();
+        }
+        if (event.code === 'ArrowDown' && gameRunning) {
+            isDucking = true;
+        }
+        if (event.code === 'KeyR' && !gameRunning) { // Add this
+            restartGame();
+        }
+    });
+
+    // Update gameLoop to only run when game is active
+    function gameLoop() {
+        if (!gameRunning) return;
+        
+        movePlayer();
+        updatePlayer();
+        
+        obstacleSpawnTimer++;
+        if (obstacleSpawnTimer >= obstacleSpawnRate) {
+            createObstacle();
+            obstacleSpawnTimer = 0;
+        }
+        
+        updateObstacles();
+        checkCollisions();
+        requestAnimationFrame(gameLoop);
+    }
+</script>
+New features:
+
+Game over screen appears when you hit an obstacle
+Shows your current score
+Press R to restart the game
+Game stops running when you die
+Test this! Try hitting an obstacle on purpose to see the "YOU DIED!" screen, then press R to restart.
+
+Next: We'll add the scoring system and 30-second win condition. Can you see the game over screen and restart functionality working?
+
+Copy message
+Translate message
+
+Read aloud
+Read aloud
+You said:
+next
+
+Copy message
+MagicSchool said:
+Excellent! Now let's add the scoring system and the 30-second win condition. Add this code to your JavaScript:
+
+html
+
+Copy
+
+Copy
+<script>
+    // ... (keep all your existing code above)
+
+    // Timer and scoring variables
+    let gameTime = 0;
+    let lastObstacleCount = 0;
+
+    // Create score display
+    function createScoreDisplay() {
+        const scoreDisplay = document.createElement('a-text');
+        scoreDisplay.setAttribute('id', 'scoreDisplay');
+        scoreDisplay.setAttribute('position', '-8 8 -10');
+        scoreDisplay.setAttribute('color', 'white');
+        scoreDisplay.setAttribute('value', 'Score: 0\nTime: 30');
+        scoreDisplay.setAttribute('scale', '1.5 1.5 1.5');
+        
+        document.querySelector('a-scene').appendChild(scoreDisplay);
+    }
+
+    // Update score and timer
+    function updateScore() {
+        gameTime++;
+        
+        // Award points for surviving (every half second)
+        if (gameTime % 30 === 0) {
+            score += 10;
+        }
+        
+        // Award bonus points for avoiding obstacles
+        if (obstacles.length < lastObstacleCount) {
+            score += 50; // Bonus for obstacle that passed
+        }
+        lastObstacleCount = obstacles.length;
+        
+        // Update display
+        const timeLeft = Math.max(0, 30 - Math.floor(gameTime / 60));
+        const scoreDisplay = document.querySelector('#scoreDisplay');
+        if (scoreDisplay) {
+            scoreDisplay.setAttribute('value', `Score: ${score}\nTime: ${timeLeft}`);
+        }
+        
+        // Check win condition (30 seconds = 1800 frames at 60fps)
+        if (gameTime >= 1800) {
+            youWin();
+        }
+    }
+
+    // Win screen
+    function youWin() {
+        gameRunning = false;
+        
+        const winScreen = document.createElement('a-text');
+        winScreen.setAttribute('id', 'winScreen');
+        winScreen.setAttribute('position', '0 3 -5');
+        winScreen.setAttribute('align', 'center');
+        winScreen.setAttribute('color', 'green');
+        winScreen.setAttribute('value', `YOU WIN!\nFinal Score: ${score}\nPress R to Play Again`);
+        winScreen.setAttribute('scale', '2 2 2');
+        
+        document.querySelector('a-scene').appendChild(winScreen);
+    }
+
+    // Update restart function to clean up displays
+    function restartGame() {
+        // Remove screens
+        const gameOverScreen = document.querySelector('#gameOverScreen');
+        const winScreen = document.querySelector('#winScreen');
+        if (gameOverScreen) gameOverScreen.remove();
+        if (winScreen) winScreen.remove();
+        
+        // Reset everything
+        playerZ = 0;
+        playerY = 1;
+        isJumping = false;
+        isDucking = false;
+        jumpSpeed = 0;
+        
+        obstacles.forEach(obstacle => obstacle.element.remove());
+        obstacles = [];
+        
+        gameRunning = true;
+        score = 0;
+        gameTime = 0;
+        obstacleSpawnTimer = 0;
+        lastObstacleCount = 0;
+    }
+
+    // Update gameLoop to include scoring
+    function gameLoop() {
+        if (!gameRunning) {
+            requestAnimationFrame(gameLoop);
+            return;
+        }
+        
+        movePlayer();
+        updatePlayer();
+        updateScore(); // Add this line
+        
+        obstacleSpawnTimer++;
+        if (obstacleSpawnTimer >= obstacleSpawnRate) {
+            createObstacle();
+            obstacleSpawnTimer = 0;
+        }
+        
+        updateObstacles();
+        checkCollisions();
+        requestAnimationFrame(gameLoop);
+    }
+
+    // Initialize score display when game starts
+    document.querySelector('a-scene').addEventListener('loaded', () => {
+        createScoreDisplay();
+        gameLoop();
+    });
+</script>
 </body>
 </html>
 
