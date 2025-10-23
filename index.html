@@ -236,7 +236,7 @@
             restartButton.setAttribute('visible', 'true');
         }
 
-        // Restart game
+        // Restart game - FIXED VERSION
         function restartGame() {
             const gameOverScreen = document.querySelector('#gameOverScreen');
             const winScreen = document.querySelector('#winScreen');
@@ -249,26 +249,30 @@
             // Hide restart button
             restartButton.setAttribute('visible', 'false');
             
-            // Show start screen again
-            startScreen.setAttribute('visible', 'true');
-            startButton.setAttribute('visible', 'true');
+            // PROPERLY RESET AVATAR POSITION
+            playerZ = 0;  // Reset Z position
+            playerY = 1;  // Reset Y position
+            player.setAttribute('position', '0 1 0');  // Force reset avatar position in the scene
             
-            // Reset everything
-            gameStarted = false;
-            gameRunning = false;
-            playerZ = 0;
-            playerY = 1;
+            // Reset player states
             isJumping = false;
             isDucking = false;
             jumpSpeed = 0;
             
+            // Clear all obstacles
             obstacles.forEach(obstacle => obstacle.element.remove());
             obstacles = [];
             
+            // Reset game state
+            gameStarted = true;  // Keep game started, don't go back to start screen
+            gameRunning = true;  // Restart the game immediately
             score = 0;
             gameTime = 0;
             obstacleSpawnTimer = 0;
             lastObstacleCount = 0;
+            
+            // Create new score display
+            createScoreDisplay();
         }
 
         // VR Controller events ONLY
