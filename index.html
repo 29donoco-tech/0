@@ -12,7 +12,7 @@
         
         <!-- Start Screen -->
         <a-text id="startScreen" position="0 4 -5" align="center" color="white" 
-                value="ENDLESS RUNNER VR\n\nControls:\nTrigger = Jump\nGrip = Duck\n\nClick START to begin!"
+                value="ENDLESS RUNNER VR\n\nVR Controls:\nTrigger Button = Jump\nGrip Button = Duck\n\nPoint and click START to begin!"
                 scale="1.5 1.5 1.5"></a-text>
         
         <!-- Start Button -->
@@ -209,7 +209,7 @@
             gameOverScreen.setAttribute('position', '0 4 -5');
             gameOverScreen.setAttribute('align', 'center');
             gameOverScreen.setAttribute('color', 'red');
-            gameOverScreen.setAttribute('value', `YOU DIED!\nScore: ${score}\nUse controller to click RESTART`);
+            gameOverScreen.setAttribute('value', `YOU DIED!\nScore: ${score}\nPoint and click RESTART`);
             gameOverScreen.setAttribute('scale', '2 2 2');
             
             document.querySelector('a-scene').appendChild(gameOverScreen);
@@ -227,7 +227,7 @@
             winScreen.setAttribute('position', '0 4 -5');
             winScreen.setAttribute('align', 'center');
             winScreen.setAttribute('color', 'green');
-            winScreen.setAttribute('value', `YOU WIN!\nFinal Score: ${score}\nUse controller to click RESTART`);
+            winScreen.setAttribute('value', `YOU WIN!\nFinal Score: ${score}\nPoint and click RESTART`);
             winScreen.setAttribute('scale', '2 2 2');
             
             document.querySelector('a-scene').appendChild(winScreen);
@@ -271,7 +271,7 @@
             lastObstacleCount = 0;
         }
 
-        // VR Controller events
+        // VR Controller events ONLY
         document.addEventListener('DOMContentLoaded', () => {
             // Start button click
             startButton.addEventListener('click', () => {
@@ -306,31 +306,6 @@
             });
         });
 
-        // Keep keyboard controls for desktop testing
-        document.addEventListener('keydown', (event) => {
-            if (event.code === 'Space') {
-                if (!gameStarted) {
-                    startGame();
-                } else if (gameRunning && !isJumping) {
-                    isJumping = true;
-                    jumpSpeed = jumpPower;
-                }
-                event.preventDefault();
-            }
-            if (event.code === 'ArrowDown' && gameRunning) {
-                isDucking = true;
-            }
-            if (event.code === 'KeyR' && !gameRunning && gameStarted) {
-                restartGame();
-            }
-        });
-
-        document.addEventListener('keyup', (event) => {
-            if (event.code === 'ArrowDown') {
-                isDucking = false;
-            }
-        });
-
         // Main game loop
         function gameLoop() {
             if (!gameRunning) {
@@ -360,6 +335,7 @@
     </script>
 </body>
 </html>
+
 
 
 
