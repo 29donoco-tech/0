@@ -12,13 +12,8 @@
         
         <!-- Start Screen -->
         <a-text id="startScreen" position="0 4 -5" align="center" color="white" 
-                value="ENDLESS RUNNER VR\n\nVR Controls:\nA Button = Jump\nGrip Button = Duck\n\nPoint and click START to begin!"
+                value="ENDLESS RUNNER VR\n\nVR Controls:\nA Button = Jump\nGrip Button = Duck\n\nPress B Button to START!"
                 scale="1.5 1.5 1.5"></a-text>
-        
-        <!-- Start Button -->
-        <a-box id="startButton" position="0 2 -3" width="2" height="0.5" depth="0.1" color="blue" 
-               class="clickable"
-               text="value: START; align: center; color: white"></a-box>
         
         <!-- Auto-restart message (appears when game ends) -->
         <a-text id="autoRestartMessage" position="0 1 -5" align="center" color="yellow" 
@@ -43,7 +38,6 @@
     <script>
         // Get elements
         const player = document.querySelector('#player');
-        const startButton = document.querySelector('#startButton');
         const startScreen = document.querySelector('#startScreen');
         const autoRestartMessage = document.querySelector('#autoRestartMessage');
         
@@ -76,9 +70,8 @@
             gameStarted = true;
             gameRunning = true;
             
-            // Hide start screen and button
+            // Hide start screen
             startScreen.setAttribute('visible', 'false');
-            startButton.setAttribute('visible', 'false');
             
             // Create score display
             createScoreDisplay();
@@ -257,7 +250,7 @@
             }
         }
 
-        // Restart game
+        // Restart game (goes back to start screen)
         function restartGame() {
             const gameOverScreen = document.querySelector('#gameOverScreen');
             const winScreen = document.querySelector('#winScreen');
@@ -269,6 +262,9 @@
             
             // Hide auto-restart message
             autoRestartMessage.setAttribute('visible', 'false');
+            
+            // Show start screen again
+            startScreen.setAttribute('visible', 'true');
             
             // Reset auto-restart state
             isAutoRestarting = false;
@@ -288,28 +284,25 @@
             obstacles.forEach(obstacle => obstacle.element.remove());
             obstacles = [];
             
-            // Reset game state
-            gameStarted = true;
-            gameRunning = true;
+            // Reset game state to waiting for start
+            gameStarted = false;
+            gameRunning = false;
             score = 0;
             gameTime = 0;
             obstacleSpawnTimer = 0;
             lastObstacleCount = 0;
-            
-            // Create new score display
-            createScoreDisplay();
         }
 
         // VR Controller events
         document.addEventListener('DOMContentLoaded', () => {
-            // Start button click
-            startButton.addEventListener('click', () => {
+            // B Button to start game
+            document.addEventListener('bbuttondown', (event) => {
                 if (!gameStarted) {
                     startGame();
                 }
             });
             
-            // A Button for jump (abuttondown event)
+            // A Button for jump
             document.addEventListener('abuttondown', (event) => {
                 if (gameRunning && !isJumping) {
                     isJumping = true;
@@ -362,6 +355,7 @@
     </script>
 </body>
 </html>
+
 
 
 
