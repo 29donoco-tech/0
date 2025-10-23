@@ -12,7 +12,7 @@
         
         <!-- Start Screen -->
         <a-text id="startScreen" position="0 4 -5" align="center" color="white" 
-                value="ENDLESS RUNNER VR\n\nVR Controls:\nTrigger Button = Jump\nGrip Button = Duck\n\nPoint and click START to begin!"
+                value="ENDLESS RUNNER VR\n\nVR Controls:\nA Button = Jump\nGrip Button = Duck\n\nPoint and click START to begin!"
                 scale="1.5 1.5 1.5"></a-text>
         
         <!-- Start Button -->
@@ -20,10 +20,9 @@
                class="clickable"
                text="value: START; align: center; color: white"></a-box>
         
-        <!-- Restart Button (appears when game ends) -->
-        <a-box id="restartButton" position="0 2 -3" width="2" height="0.5" depth="0.1" color="green" 
-               visible="false" class="clickable"
-               text="value: RESTART; align: center; color: white"></a-box>
+        <!-- Auto-restart message (appears when game ends) -->
+        <a-text id="autoRestartMessage" position="0 1 -5" align="center" color="yellow" 
+                value="Auto-restarting in 3 seconds..." scale="1.5 1.5 1.5" visible="false"></a-text>
         
         <!-- Lighting -->
         <a-light type="ambient" color="#404040"></a-light>
@@ -45,8 +44,8 @@
         // Get elements
         const player = document.querySelector('#player');
         const startButton = document.querySelector('#startButton');
-        const restartButton = document.querySelector('#restartButton');
         const startScreen = document.querySelector('#startScreen');
+        const autoRestartMessage = document.querySelector('#autoRestartMessage');
         
         // Game state variables
         let gameStarted = false;
@@ -54,6 +53,8 @@
         let score = 0;
         let gameTime = 0;
         let lastObstacleCount = 0;
+        let autoRestartTimer = 0;
+        let isAutoRestarting = false;
         
         // Player variables
         let playerZ = 0;
@@ -200,43 +201,63 @@
             }
         }
 
-        // Game over screen
+        // Game over screen with auto-restart
         function gameOver() {
             gameRunning = false;
+            isAutoRestarting = true;
+            autoRestartTimer = 180; // 3 seconds at 60fps
             
             const gameOverScreen = document.createElement('a-text');
             gameOverScreen.setAttribute('id', 'gameOverScreen');
             gameOverScreen.setAttribute('position', '0 4 -5');
             gameOverScreen.setAttribute('align', 'center');
             gameOverScreen.setAttribute('color', 'red');
-            gameOverScreen.setAttribute('value', `YOU DIED!\nScore: ${score}\nPoint and click RESTART`);
+            gameOverScreen.setAttribute('value', `YOU DIED!\nScore: ${score}`);
             gameOverScreen.setAttribute('scale', '2 2 2');
             
             document.querySelector('a-scene').appendChild(gameOverScreen);
             
-            // Show restart button
-            restartButton.setAttribute('visible', 'true');
+            // Show auto-restart message
+            autoRestartMessage.setAttribute('visible', 'true');
         }
 
-        // Win screen
+        // Win screen with auto-restart
         function youWin() {
             gameRunning = false;
+            isAutoRestarting = true;
+            autoRestartTimer = 180; // 3 seconds at 60fps
             
             const winScreen = document.createElement('a-text');
             winScreen.setAttribute('id', 'winScreen');
             winScreen.setAttribute('position', '0 4 -5');
             winScreen.setAttribute('align', 'center');
             winScreen.setAttribute('color', 'green');
-            winScreen.setAttribute('value', `YOU WIN!\nFinal Score: ${score}\nPoint and click RESTART`);
+            winScreen.setAttribute('value', `YOU WIN!\nFinal Score: ${score}`);
             winScreen.setAttribute('scale', '2 2 2');
             
             document.querySelector('a-scene').appendChild(winScreen);
             
-            // Show restart button
-            restartButton.setAttribute('visible', 'true');
+            // Show auto-restart message
+            autoRestartMessage.setAttribute('visible', 'true');
         }
 
-        // Restart game - FIXED VERSION
+        // Auto-restart countdown
+        function updateAutoRestart() {
+            if (isAutoRestarting) {
+                autoRestartTimer--;
+                
+                // Update countdown message
+                const secondsLeft = Math.ceil(autoRestartTimer / 60);
+                autoRestartMessage.setAttribute('value', `Auto-restarting in ${secondsLeft} seconds...`);
+                
+                // Restart when timer reaches 0
+                if (autoRestartTimer <= 0) {
+                    restartGame();
+                }
+            }
+        }
+
+        // Restart game
         function restartGame() {
             const gameOverScreen = document.querySelector('#gameOverScreen');
             const winScreen = document.querySelector('#winScreen');
@@ -246,13 +267,17 @@
             if (winScreen) winScreen.remove();
             if (scoreDisplay) scoreDisplay.remove();
             
-            // Hide restart button
-            restartButton.setAttribute('visible', 'false');
+            // Hide auto-restart message
+            autoRestartMessage.setAttribute('visible', 'false');
+            
+            // Reset auto-restart state
+            isAutoRestarting = false;
+            autoRestartTimer = 0;
             
             // PROPERLY RESET AVATAR POSITION
-            playerZ = 0;  // Reset Z position
-            playerY = 1;  // Reset Y position
-            player.setAttribute('position', '0 1 0');  // Force reset avatar position in the scene
+            playerZ = 0;
+            playerY = 1;
+            player.setAttribute('position', '0 1 0');
             
             // Reset player states
             isJumping = false;
@@ -264,8 +289,8 @@
             obstacles = [];
             
             // Reset game state
-            gameStarted = true;  // Keep game started, don't go back to start screen
-            gameRunning = true;  // Restart the game immediately
+            gameStarted = true;
+            gameRunning = true;
             score = 0;
             gameTime = 0;
             obstacleSpawnTimer = 0;
@@ -275,7 +300,7 @@
             createScoreDisplay();
         }
 
-        // VR Controller events ONLY
+        // VR Controller events
         document.addEventListener('DOMContentLoaded', () => {
             // Start button click
             startButton.addEventListener('click', () => {
@@ -284,21 +309,15 @@
                 }
             });
             
-            // Restart button click
-            restartButton.addEventListener('click', () => {
-                if (!gameRunning) {
-                    restartGame();
-                }
-            });
-            
-            // Controller button events for jump/duck
-            document.addEventListener('triggerdown', (event) => {
+            // A Button for jump (abuttondown event)
+            document.addEventListener('abuttondown', (event) => {
                 if (gameRunning && !isJumping) {
                     isJumping = true;
                     jumpSpeed = jumpPower;
                 }
             });
             
+            // Grip button for duck
             document.addEventListener('gripdown', (event) => {
                 if (gameRunning) {
                     isDucking = true;
@@ -312,6 +331,10 @@
 
         // Main game loop
         function gameLoop() {
+            if (isAutoRestarting) {
+                updateAutoRestart();
+            }
+            
             if (!gameRunning) {
                 requestAnimationFrame(gameLoop);
                 return;
@@ -339,6 +362,7 @@
     </script>
 </body>
 </html>
+
 
 
 
