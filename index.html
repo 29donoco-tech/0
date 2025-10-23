@@ -1,6 +1,6 @@
 <html>
 <head>
-    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script src="https://aframe.io/releases/1.7.0/aframe.min.js"></script>
 </head>
 <body>
     <a-scene vr-mode-ui="enabled: true">
@@ -33,10 +33,12 @@
             <a-camera look-at="#player"></a-camera>
             <a-entity id="leftHand" 
                       hand-controls="hand: left; handModelStyle: lowPoly; color: #ffcccc"
-                      laser-controls raycaster="objects: .clickable"></a-entity>
+                      laser-controls raycaster="objects: .clickable"
+                      oculus-touch-controls="hand: left"></a-entity>
             <a-entity id="rightHand" 
                       hand-controls="hand: right; handModelStyle: lowPoly; color: #ffcccc"
-                      laser-controls raycaster="objects: .clickable"></a-entity>
+                      laser-controls raycaster="objects: .clickable"
+                      oculus-touch-controls="hand: right"></a-entity>
         </a-entity>
     </a-scene>
 
@@ -46,6 +48,8 @@
         const startScreen = document.querySelector('#startScreen');
         const autoRestartMessage = document.querySelector('#autoRestartMessage');
         const playAgainButton = document.querySelector('#playAgainButton');
+        const leftHand = document.querySelector('#leftHand');
+        const rightHand = document.querySelector('#rightHand');
         
         // Game state variables
         let gameStarted = false;
@@ -74,6 +78,7 @@
 
         // Start the game
         function startGame() {
+            console.log("Starting game!"); // Debug log
             gameStarted = true;
             gameRunning = true;
             avatarMoving = true;
@@ -204,12 +209,12 @@
             }
         }
 
-        // Game over screen with auto-restart (ONLY when you die)
+        // Game over screen with auto-restart
         function gameOver() {
             gameRunning = false;
             avatarMoving = false;
-            isAutoRestarting = true; // Auto-restart when you die
-            autoRestartTimer = 180; // 3 seconds at 60fps
+            isAutoRestarting = true;
+            autoRestartTimer = 180;
             
             const gameOverScreen = document.createElement('a-text');
             gameOverScreen.setAttribute('id', 'gameOverScreen');
@@ -221,15 +226,13 @@
             
             document.querySelector('a-scene').appendChild(gameOverScreen);
             
-            // Show auto-restart message
             autoRestartMessage.setAttribute('visible', 'true');
         }
 
-        // Win screen with manual restart (NO auto-restart when you win)
+        // Win screen with manual restart
         function youWin() {
             gameRunning = false;
             avatarMoving = false;
-            // NO auto-restart when you win
             
             const winScreen = document.createElement('a-text');
             winScreen.setAttribute('id', 'winScreen');
@@ -241,27 +244,24 @@
             
             document.querySelector('a-scene').appendChild(winScreen);
             
-            // Show play again button
             playAgainButton.setAttribute('visible', 'true');
         }
 
-        // Auto-restart countdown (only for death)
+        // Auto-restart countdown
         function updateAutoRestart() {
             if (isAutoRestarting) {
                 autoRestartTimer--;
                 
-                // Update countdown message
                 const secondsLeft = Math.ceil(autoRestartTimer / 60);
                 autoRestartMessage.setAttribute('value', `Auto-restarting in ${secondsLeft} seconds...`);
                 
-                // Restart when timer reaches 0
                 if (autoRestartTimer <= 0) {
                     restartGame();
                 }
             }
         }
 
-        // Restart game (goes back to start screen)
+        // Restart game
         function restartGame() {
             const gameOverScreen = document.querySelector('#gameOverScreen');
             const winScreen = document.querySelector('#winScreen');
@@ -271,32 +271,24 @@
             if (winScreen) winScreen.remove();
             if (scoreDisplay) scoreDisplay.remove();
             
-            // Hide messages and buttons
             autoRestartMessage.setAttribute('visible', 'false');
             playAgainButton.setAttribute('visible', 'false');
-            
-            // Show start screen again
             startScreen.setAttribute('visible', 'true');
             
-            // Reset auto-restart state
             isAutoRestarting = false;
             autoRestartTimer = 0;
             
-            // PROPERLY RESET AVATAR POSITION
             playerZ = 0;
             playerY = 1;
             player.setAttribute('position', '0 1 0');
             
-            // Reset player states
             isJumping = false;
             isDucking = false;
             jumpSpeed = 0;
             
-            // Clear all obstacles
             obstacles.forEach(obstacle => obstacle.element.remove());
             obstacles = [];
             
-            // Reset game state to waiting for start
             gameStarted = false;
             gameRunning = false;
             avatarMoving = false;
@@ -306,43 +298,74 @@
             lastObstacleCount = 0;
         }
 
-        // VR Controller events
-        document.addEventListener('DOMContentLoaded', () => {
-            // B Button to start game OR restart from win screen
-            document.addEventListener('bbuttondown', (event) => {
-                if (!gameStarted) {
-                    startGame();
-                } else if (!gameRunning && !isAutoRestarting) {
-                    // If game ended (won) and not auto-restarting, restart manually
-                    restartGame();
+        // Setup controller events when scene loads
+        document.querySelector('a-scene').addEventListener('loaded', () => {
+            console.log("Scene loaded, setting up controls"); // Debug log
+            
+            // Setup controller events for both hands
+            [leftHand, rightHand].forEach(hand => {
+                if (hand) {
+                    // B Button (Y button on left controller, B button on right controller)
+                    hand.addEventListener('bbuttondown', () => {
+                        console.log("B button pressed"); // Debug log
+                        if (!gameStarted) {
+                            startGame();
+                        } else if (!gameRunning && !isAutoRestarting) {
+                            restartGame();
+                        }
+                    });
+                    
+                    // Also listen for Y button (left controller equivalent of B)
+                    hand.addEventListener('ybuttondown', () => {
+                        console.log("Y button pressed"); // Debug log
+                        if (!gameStarted) {
+                            startGame();
+                        } else if (!gameRunning && !isAutoRestarting) {
+                            restartGame();
+                        }
+                    });
+                    
+                    // A Button for jump
+                    hand.addEventListener('abuttondown', () => {
+                        console.log("A button pressed"); // Debug log
+                        if (gameRunning && !isJumping) {
+                            isJumping = true;
+                            jumpSpeed = jumpPower;
+                        }
+                    });
+                    
+                    // X Button for jump (left controller equivalent of A)
+                    hand.addEventListener('xbuttondown', () => {
+                        console.log("X button pressed"); // Debug log
+                        if (gameRunning && !isJumping) {
+                            isJumping = true;
+                            jumpSpeed = jumpPower;
+                        }
+                    });
+                    
+                    // Grip for duck
+                    hand.addEventListener('gripdown', () => {
+                        console.log("Grip pressed"); // Debug log
+                        if (gameRunning) {
+                            isDucking = true;
+                        }
+                    });
+                    
+                    hand.addEventListener('gripup', () => {
+                        isDucking = false;
+                    });
                 }
             });
             
-            // Play Again button click (for win screen)
+            // Play Again button click
             playAgainButton.addEventListener('click', () => {
                 if (!gameRunning && !isAutoRestarting) {
                     restartGame();
                 }
             });
             
-            // A Button for jump
-            document.addEventListener('abuttondown', (event) => {
-                if (gameRunning && !isJumping) {
-                    isJumping = true;
-                    jumpSpeed = jumpPower;
-                }
-            });
-            
-            // Grip button for duck
-            document.addEventListener('gripdown', (event) => {
-                if (gameRunning) {
-                    isDucking = true;
-                }
-            });
-            
-            document.addEventListener('gripup', (event) => {
-                isDucking = false;
-            });
+            // Start the game loop
+            gameLoop();
         });
 
         // Main game loop
@@ -371,12 +394,6 @@
             checkCollisions();
             requestAnimationFrame(gameLoop);
         }
-
-        // Start the game loop when scene loads
-        document.querySelector('a-scene').addEventListener('loaded', () => {
-            gameLoop();
-        });
     </script>
 </body>
 </html>
-
