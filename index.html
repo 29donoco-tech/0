@@ -3,24 +3,38 @@
     <script src="https://aframe.io/releases/1.7.0/aframe.min.js"></script>
 </head>
 <body>
-    <a-scene>
+    <a-scene vr-mode-ui="enabled: true">
         <!-- Ground -->
         <a-plane position="0 0 0" rotation="-90 0 0" width="20" height="50" color="#7BC8A4"></a-plane>
         
         <!-- Avatar -->
         <a-box id="player" position="0 1 0" color="blue" width="1" height="1" depth="1"></a-box>
         
+        <!-- Restart Button (appears when game ends) -->
+        <a-box id="restartButton" position="0 2 -3" width="2" height="0.5" depth="0.1" color="green" 
+               visible="false" class="clickable"
+               text="value: RESTART; align: center; color: white"></a-box>
+        
         <!-- Lighting -->
         <a-light type="ambient" color="#404040"></a-light>
         <a-light type="directional" position="0 10 0" color="#ffffff"></a-light>
         
-        <!-- Camera -->
-        <a-camera position="0 5 10" look-at="#player"></a-camera>
+        <!-- VR Camera with controllers -->
+        <a-entity id="cameraRig" position="0 5 10">
+            <a-camera look-at="#player"></a-camera>
+            <a-entity id="leftHand" 
+                      hand-controls="hand: left; handModelStyle: lowPoly; color: #ffcccc"
+                      laser-controls raycaster="objects: .clickable"></a-entity>
+            <a-entity id="rightHand" 
+                      hand-controls="hand: right; handModelStyle: lowPoly; color: #ffcccc"
+                      laser-controls raycaster="objects: .clickable"></a-entity>
+        </a-entity>
     </a-scene>
 
     <script>
-        // Get the player element
+        // Get elements
         const player = document.querySelector('#player');
+        const restartButton = document.querySelector('#restartButton');
         
         // Game state variables
         let gameRunning = true;
@@ -166,13 +180,16 @@
             
             const gameOverScreen = document.createElement('a-text');
             gameOverScreen.setAttribute('id', 'gameOverScreen');
-            gameOverScreen.setAttribute('position', '0 3 -5');
+            gameOverScreen.setAttribute('position', '0 4 -5');
             gameOverScreen.setAttribute('align', 'center');
             gameOverScreen.setAttribute('color', 'red');
-            gameOverScreen.setAttribute('value', `YOU DIED!\nScore: ${score}\nPress R to Restart`);
+            gameOverScreen.setAttribute('value', `YOU DIED!\nScore: ${score}\nUse controller to click RESTART`);
             gameOverScreen.setAttribute('scale', '2 2 2');
             
             document.querySelector('a-scene').appendChild(gameOverScreen);
+            
+            // Show restart button
+            restartButton.setAttribute('visible', 'true');
         }
 
         // Win screen
@@ -181,13 +198,16 @@
             
             const winScreen = document.createElement('a-text');
             winScreen.setAttribute('id', 'winScreen');
-            winScreen.setAttribute('position', '0 3 -5');
+            winScreen.setAttribute('position', '0 4 -5');
             winScreen.setAttribute('align', 'center');
             winScreen.setAttribute('color', 'green');
-            winScreen.setAttribute('value', `YOU WIN!\nFinal Score: ${score}\nPress R to Play Again`);
+            winScreen.setAttribute('value', `YOU WIN!\nFinal Score: ${score}\nUse controller to click RESTART`);
             winScreen.setAttribute('scale', '2 2 2');
             
             document.querySelector('a-scene').appendChild(winScreen);
+            
+            // Show restart button
+            restartButton.setAttribute('visible', 'true');
         }
 
         // Restart game
@@ -196,6 +216,9 @@
             const winScreen = document.querySelector('#winScreen');
             if (gameOverScreen) gameOverScreen.remove();
             if (winScreen) winScreen.remove();
+            
+            // Hide restart button
+            restartButton.setAttribute('visible', 'false');
             
             playerZ = 0;
             playerY = 1;
@@ -213,7 +236,35 @@
             lastObstacleCount = 0;
         }
 
-        // Keyboard controls
+        // VR Controller events
+        document.addEventListener('DOMContentLoaded', () => {
+            // Restart button click
+            restartButton.addEventListener('click', () => {
+                if (!gameRunning) {
+                    restartGame();
+                }
+            });
+            
+            // Controller button events for jump/duck
+            document.addEventListener('triggerdown', (event) => {
+                if (gameRunning && !isJumping) {
+                    isJumping = true;
+                    jumpSpeed = jumpPower;
+                }
+            });
+            
+            document.addEventListener('gripdown', (event) => {
+                if (gameRunning) {
+                    isDucking = true;
+                }
+            });
+            
+            document.addEventListener('gripup', (event) => {
+                isDucking = false;
+            });
+        });
+
+        // Keep keyboard controls for desktop testing
         document.addEventListener('keydown', (event) => {
             if (event.code === 'Space' && !isJumping && gameRunning) {
                 isJumping = true;
@@ -264,3 +315,5 @@
     </script>
 </body>
 </html>
+
+
