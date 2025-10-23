@@ -3,7 +3,7 @@
     <script src="https://aframe.io/releases/1.7.0/aframe.min.js"></script>
 </head>
 <body>
-    <a-scene vr-mode-ui="enabled: true">
+    <a-scene vr-mode-ui="enabled: true" cursor="rayOrigin: mouse">
         <!-- Ground -->
         <a-plane position="0 0 0" rotation="-90 0 0" width="20" height="50" color="#7BC8A4"></a-plane>
         
@@ -12,16 +12,43 @@
         
         <!-- Start Screen -->
         <a-text id="startScreen" position="0 4 -5" align="center" color="white" 
-                value="ENDLESS RUNNER VR\n\nGame starts automatically in VR!\nLook around to jump\nMove head down to duck"
+                value="ENDLESS RUNNER VR\n\nGame starts automatically in VR!\nLook up to jump\nLook down to duck\nOr click to jump"
                 scale="1.5 1.5 1.5"></a-text>
+        
+        <!-- Clickable invisible plane for cursor interaction -->
+        <a-plane id="clickArea" position="0 3 -4" rotation="0 0 0" width="10" height="6" 
+                 color="transparent" opacity="0" class="clickable"></a-plane>
         
         <!-- Lighting -->
         <a-light type="ambient" color="#404040"></a-light>
         <a-light type="directional" position="0 10 0" color="#ffffff"></a-light>
         
-        <!-- VR Camera -->
+        <!-- VR Camera with cursor -->
         <a-entity id="cameraRig" position="0 5 10">
-            <a-camera id="camera" look-at="#player"></a-camera>
+            <a-camera id="camera" look-at="#player" 
+                      cursor="fuse: true; fuseTimeout: 1500"
+                      raycaster="objects: .clickable">
+                
+                <!-- Cursor (crosshair) -->
+                <a-cursor id="cursor" 
+                          position="0 0 -1"
+                          geometry="primitive: ring; radiusInner: 0.02; radiusOuter: 0.03"
+                          material="color: white; shader: flat"
+                          animation__click="property: scale; startEvents: click; easing: easeInCubic; dur: 150; from: 0.1 0.1 0.1; to: 1 1 1"
+                          animation__fusing="property: scale; startEvents: fusing; easing: easeInCubic; dur: 1500; from: 1 1 1; to: 0.1 0.1 0.1"
+                          animation__mouseleave="property: scale; startEvents: mouseleave; easing: easeInCubic; dur: 500; to: 1 1 1">
+                </a-cursor>
+                
+                <!-- VR Controllers (for VR mode) -->
+                <a-entity id="leftController" 
+                          oculus-touch-controls="hand: left"
+                          laser-controls="color: red"
+                          raycaster="objects: .clickable"></a-entity>
+                <a-entity id="rightController" 
+                          oculus-touch-controls="hand: right"
+                          laser-controls="color: blue"
+                          raycaster="objects: .clickable"></a-entity>
+            </a-camera>
         </a-entity>
     </a-scene>
 
@@ -30,6 +57,8 @@
         const player = document.querySelector('#player');
         const startScreen = document.querySelector('#startScreen');
         const camera = document.querySelector('#camera');
+        const cursor = document.querySelector('#cursor');
+        const clickArea = document.querySelector('#clickArea');
         
         // Game state variables
         let gameStarted = false;
@@ -58,6 +87,16 @@
         let obstacleSpawnTimer = 0;
         const obstacleSpawnRate = 120;
 
+        // Jump function
+        function jump() {
+            if (gameRunning && !isJumping && jumpCooldown <= 0) {
+                console.log("Jumping!");
+                isJumping = true;
+                jumpSpeed = jumpPower;
+                jumpCooldown = 30;
+            }
+        }
+
         // Auto-start the game after 3 seconds
         function autoStartGame() {
             startTimer++;
@@ -65,7 +104,7 @@
             // Show countdown
             const secondsLeft = Math.max(0, 3 - Math.floor(startTimer / 60));
             if (secondsLeft > 0) {
-                startScreen.setAttribute('value', `ENDLESS RUNNER VR\n\nGame starts automatically in VR!\nLook up to jump\nLook down to duck\n\nStarting in ${secondsLeft}...`);
+                startScreen.setAttribute('value', `ENDLESS RUNNER VR\n\nGame starts automatically!\nLook up to jump\nLook down to duck\nOr click/gaze to jump\n\nStarting in ${secondsLeft}...`);
             } else if (!gameStarted) {
                 startGame();
             }
@@ -92,9 +131,7 @@
             // Jump when looking up (negative X rotation)
             if (currentY < -20 && !isJumping && jumpCooldown <= 0) {
                 console.log("Head up - jumping!");
-                isJumping = true;
-                jumpSpeed = jumpPower;
-                jumpCooldown = 30; // Prevent rapid jumping
+                jump();
             }
             
             // Duck when looking down (positive X rotation)
@@ -170,7 +207,7 @@
                 if (obstacle.z > 5) {
                     obstacle.element.remove();
                     obstacles.splice(i, 1);
-                    score += 10; // Points for avoiding obstacle
+                    score += 10;
                     updateScoreDisplay();
                 }
             }
@@ -262,9 +299,32 @@
             requestAnimationFrame(gameLoop);
         }
 
+        // Setup click/gaze events
+        function setupClickEvents() {
+            // Click area for jumping
+            clickArea.addEventListener('click', () => {
+                console.log("Click detected!");
+                if (!gameStarted) {
+                    startGame();
+                } else {
+                    jump();
+                }
+            });
+
+            // Cursor events for visual feedback
+            cursor.addEventListener('mouseenter', () => {
+                cursor.setAttribute('material', 'color: yellow');
+            });
+
+            cursor.addEventListener('mouseleave', () => {
+                cursor.setAttribute('material', 'color: white');
+            });
+        }
+
         // Initialize when scene loads
         document.querySelector('a-scene').addEventListener('loaded', () => {
-            console.log("Scene loaded, starting auto-countdown");
+            console.log("Scene loaded with cursor and camera");
+            setupClickEvents();
             gameLoop();
         });
     </script>
