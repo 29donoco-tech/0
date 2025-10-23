@@ -12,22 +12,16 @@
         
         <!-- Start Screen -->
         <a-text id="startScreen" position="0 4 -5" align="center" color="white" 
-                value="ENDLESS RUNNER VR\n\nPress ANY controller button to START!\nThen use trigger to jump"
+                value="ENDLESS RUNNER VR\n\nGame starts automatically in VR!\nLook around to jump\nMove head down to duck"
                 scale="1.5 1.5 1.5"></a-text>
         
         <!-- Lighting -->
         <a-light type="ambient" color="#404040"></a-light>
         <a-light type="directional" position="0 10 0" color="#ffffff"></a-light>
         
-        <!-- VR Camera with controllers -->
+        <!-- VR Camera -->
         <a-entity id="cameraRig" position="0 5 10">
-            <a-camera look-at="#player"></a-camera>
-            <a-entity id="leftController" 
-                      oculus-touch-controls="hand: left"
-                      hand-controls="hand: left"></a-entity>
-            <a-entity id="rightController" 
-                      oculus-touch-controls="hand: right"
-                      hand-controls="hand: right"></a-entity>
+            <a-camera id="camera" look-at="#player"></a-camera>
         </a-entity>
     </a-scene>
 
@@ -35,33 +29,51 @@
         // Get elements
         const player = document.querySelector('#player');
         const startScreen = document.querySelector('#startScreen');
-        const leftController = document.querySelector('#leftController');
-        const rightController = document.querySelector('#rightController');
+        const camera = document.querySelector('#camera');
         
         // Game state variables
         let gameStarted = false;
         let gameRunning = false;
         let avatarMoving = false;
+        let startTimer = 0;
         let score = 0;
-        let gameTime = 0;
         
         // Player variables
         let playerZ = 0;
         let playerY = 1;
         let isJumping = false;
+        let isDucking = false;
         let jumpSpeed = 0;
         const jumpPower = 0.3;
         const gravity = 0.02;
         const moveSpeed = 0.05;
+        
+        // Head tracking variables
+        let lastCameraY = 0;
+        let jumpCooldown = 0;
+        let duckCooldown = 0;
         
         // Obstacle system
         let obstacles = [];
         let obstacleSpawnTimer = 0;
         const obstacleSpawnRate = 120;
 
+        // Auto-start the game after 3 seconds
+        function autoStartGame() {
+            startTimer++;
+            
+            // Show countdown
+            const secondsLeft = Math.max(0, 3 - Math.floor(startTimer / 60));
+            if (secondsLeft > 0) {
+                startScreen.setAttribute('value', `ENDLESS RUNNER VR\n\nGame starts automatically in VR!\nLook up to jump\nLook down to duck\n\nStarting in ${secondsLeft}...`);
+            } else if (!gameStarted) {
+                startGame();
+            }
+        }
+
         // Start the game
         function startGame() {
-            console.log("Game started!");
+            console.log("Game auto-started!");
             gameStarted = true;
             gameRunning = true;
             avatarMoving = true;
@@ -70,13 +82,35 @@
             createScoreDisplay();
         }
 
-        // Jump function
-        function jump() {
-            if (gameRunning && !isJumping) {
-                console.log("Jumping!");
+        // Head tracking controls
+        function updateHeadControls() {
+            if (!gameRunning) return;
+            
+            const cameraPos = camera.getAttribute('rotation');
+            const currentY = cameraPos.x; // X rotation is looking up/down
+            
+            // Jump when looking up (negative X rotation)
+            if (currentY < -20 && !isJumping && jumpCooldown <= 0) {
+                console.log("Head up - jumping!");
                 isJumping = true;
                 jumpSpeed = jumpPower;
+                jumpCooldown = 30; // Prevent rapid jumping
             }
+            
+            // Duck when looking down (positive X rotation)
+            if (currentY > 20 && duckCooldown <= 0) {
+                console.log("Head down - ducking!");
+                isDucking = true;
+                duckCooldown = 30;
+            } else if (currentY <= 10) {
+                isDucking = false;
+            }
+            
+            // Reduce cooldowns
+            if (jumpCooldown > 0) jumpCooldown--;
+            if (duckCooldown > 0) duckCooldown--;
+            
+            lastCameraY = currentY;
         }
 
         // Move player forward
@@ -97,6 +131,12 @@
                     isJumping = false;
                     jumpSpeed = 0;
                 }
+            }
+            
+            if (isDucking) {
+                playerY = 0.5;
+            } else if (!isJumping) {
+                playerY = 1;
             }
             
             player.setAttribute('position', `0 ${playerY} ${playerZ}`);
@@ -130,6 +170,8 @@
                 if (obstacle.z > 5) {
                     obstacle.element.remove();
                     obstacles.splice(i, 1);
+                    score += 10; // Points for avoiding obstacle
+                    updateScoreDisplay();
                 }
             }
         }
@@ -146,6 +188,14 @@
             document.querySelector('a-scene').appendChild(scoreDisplay);
         }
 
+        // Update score display
+        function updateScoreDisplay() {
+            const scoreDisplay = document.querySelector('#scoreDisplay');
+            if (scoreDisplay) {
+                scoreDisplay.setAttribute('value', `Score: ${score}`);
+            }
+        }
+
         // Simple collision detection
         function checkCollisions() {
             for (let obstacle of obstacles) {
@@ -157,54 +207,56 @@
                     Math.pow(playerPos.z - obstaclePos.z, 2)
                 );
                 
-                if (distance < 1) {
-                    // Simple restart
-                    console.log("Hit obstacle! Restarting...");
-                    setTimeout(() => {
-                        location.reload(); // Simple page reload
-                    }, 1000);
+                const heightDiff = Math.abs(playerPos.y - obstaclePos.y);
+                
+                if (distance < 1 && heightDiff < 1) {
+                    gameOver();
                     return true;
                 }
             }
             return false;
         }
 
-        // Setup ALL possible button events
-        function setupControllerEvents(controller) {
-            if (!controller) return;
+        // Game over
+        function gameOver() {
+            console.log("Game over! Restarting in 3 seconds...");
+            gameRunning = false;
+            avatarMoving = false;
             
-            // Listen for ALL button events to start the game
-            const startEvents = [
-                'triggerdown', 'abuttondown', 'bbuttondown', 'xbuttondown', 'ybuttondown', 
-                'gripdown', 'thumbstickdown', 'surfacedown'
-            ];
+            const gameOverScreen = document.createElement('a-text');
+            gameOverScreen.setAttribute('position', '0 4 -5');
+            gameOverScreen.setAttribute('align', 'center');
+            gameOverScreen.setAttribute('color', 'red');
+            gameOverScreen.setAttribute('value', `GAME OVER!\nScore: ${score}\nRestarting in 3 seconds...`);
+            gameOverScreen.setAttribute('scale', '2 2 2');
             
-            startEvents.forEach(eventType => {
-                controller.addEventListener(eventType, () => {
-                    console.log(`${eventType} detected on controller`);
-                    if (!gameStarted) {
-                        startGame();
-                    } else if (gameRunning) {
-                        jump();
-                    }
-                });
-            });
+            document.querySelector('a-scene').appendChild(gameOverScreen);
+            
+            // Auto-restart after 3 seconds
+            setTimeout(() => {
+                location.reload();
+            }, 3000);
         }
 
         // Main game loop
         function gameLoop() {
-            movePlayer();
-            updatePlayer();
-            
-            if (gameRunning) {
-                obstacleSpawnTimer++;
-                if (obstacleSpawnTimer >= obstacleSpawnRate) {
-                    createObstacle();
-                    obstacleSpawnTimer = 0;
-                }
+            if (!gameStarted) {
+                autoStartGame();
+            } else {
+                updateHeadControls();
+                movePlayer();
+                updatePlayer();
                 
-                updateObstacles();
-                checkCollisions();
+                if (gameRunning) {
+                    obstacleSpawnTimer++;
+                    if (obstacleSpawnTimer >= obstacleSpawnRate) {
+                        createObstacle();
+                        obstacleSpawnTimer = 0;
+                    }
+                    
+                    updateObstacles();
+                    checkCollisions();
+                }
             }
             
             requestAnimationFrame(gameLoop);
@@ -212,13 +264,7 @@
 
         // Initialize when scene loads
         document.querySelector('a-scene').addEventListener('loaded', () => {
-            console.log("Scene loaded, setting up controllers");
-            
-            // Setup events for both controllers
-            setupControllerEvents(leftController);
-            setupControllerEvents(rightController);
-            
-            // Start game loop
+            console.log("Scene loaded, starting auto-countdown");
             gameLoop();
         });
     </script>
